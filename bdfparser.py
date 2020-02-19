@@ -1,6 +1,6 @@
 # Simple BDF to BMP tool in Python
 # 
-# Copyright (c) 2017 tomchen.org
+# Copyright (c) 2017 tomchen.org (tomchen.org)
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation self.files (the "Software"), to deal
