@@ -67,10 +67,10 @@ bpo.getCharBmpByUnicode(169)
   * GNU Unifont: [Wikipedia article](https://en.wikipedia.org/wiki/GNU_Unifont). Unicode font (intended to support "all" common languages)
   * M+ FONTS: [Wikipedia article](https://en.wikipedia.org/wiki/M%2B_FONTS). Japanese font
   * HanWangYanKai 王漢宗自由字型顏體: Traditional Chinese font
-  * SimSun 宋体: Simplified Chinese font
+  * MingLiU 細明體: Traditional Chinese font
+  * SimSun 中易宋体: Simplified Chinese font
   * STKaiti 华文楷体: Simplified Chinese font
   * FZCKJW 方正粗楷简体: Simplified Chinese font
-  * MingLiU 細明體: Traditional Chinese font
 * [otf2bdf](https://github.com/tomchen/bdfparser/tree/master/tools/otf2bdf): OpenType to BDF Converter. Just an archive. Not written by me.
 
 ## Projects that use this library
