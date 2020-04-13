@@ -65,3 +65,24 @@ bpo.getCharBmpByUnicode(169)
 ## Projects that use this library
 
 [FNT Generator](https://github.com/might-and-magic/fnt-generator): Might and Magic 6 7 8 and Heroes 3 font File Generator in Python. Another project of mine
+
+## Other tools
+* [Example .bdf fonts](https://github.com/tomchen/bdfparser/tree/master/example_fonts/bdf):
+  * GNU Unifont: [Wikipedia article](https://en.wikipedia.org/wiki/GNU_Unifont). Unicode font (intended to support "all" common languages)
+  * M+ FONTS: [Wikipedia article](https://en.wikipedia.org/wiki/M%2B_FONTS). Japanese font
+  * HanWangYanKai 王漢宗自由字型顏體: Traditional Chinese font
+  * SimSun 宋体: Simplified Chinese font
+  * STKaiti 华文楷体: Simplified Chinese font
+  * FZCKJW 方正粗楷简体: Simplified Chinese font
+  * MingLiU 細明體: Traditional Chinese font
+* [otf2bdf](https://github.com/tomchen/bdfparser/tree/master/tools/otf2bdf): OpenType to BDF Converter. Just an archive. Not written by me.
+
+## License
+
+* Python code is written by me (Tom CHEN) and is released under the MIT License.
+* [otf2bdf](https://github.com/tomchen/bdfparser/tree/master/tools/otf2bdf): see its page.
+* Example .bdf fonts:
+  * GNU Unifont: [GNU General Public License](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html), by Roman Czyborra, Paul Hardy, part of the GNU Project
+  * M+ FONTS: [a free license](https://mplus-fonts.osdn.jp/about-en.html#license), designed by Coji Morishita
+  * HanWangYanKai 王漢宗自由字型顏體: [GNU General Public License](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html), by 王漢宗
+  * Other fonts are proprietary, and are used non-commercially and fairly
