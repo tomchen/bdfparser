@@ -62,10 +62,6 @@ Get binary representation of bitmap of the character "©" -- "©" does not exist
 bpo.getCharBmpByUnicode(169)
 ```
 
-## Projects that use this library
-
-[FNT Generator](https://github.com/might-and-magic/fnt-generator): Might and Magic 6 7 8 and Heroes 3 font File Generator in Python. Another project of mine
-
 ## Other tools
 * [Example .bdf fonts](https://github.com/tomchen/bdfparser/tree/master/example_fonts/bdf):
   * GNU Unifont: [Wikipedia article](https://en.wikipedia.org/wiki/GNU_Unifont). Unicode font (intended to support "all" common languages)
@@ -76,6 +72,10 @@ bpo.getCharBmpByUnicode(169)
   * FZCKJW 方正粗楷简体: Simplified Chinese font
   * MingLiU 細明體: Traditional Chinese font
 * [otf2bdf](https://github.com/tomchen/bdfparser/tree/master/tools/otf2bdf): OpenType to BDF Converter. Just an archive. Not written by me.
+
+## Projects that use this library
+
+[FNT Generator](https://github.com/might-and-magic/fnt-generator): Might and Magic 6 7 8 and Heroes 3 font File Generator in Python. Another project of mine
 
 ## License
 
