@@ -23,25 +23,25 @@ bpo = bp.BdfParser('example_fonts/bdf/SimSun-14.bdf')
 Get binary representation string of bitmap of the character "的":
 
 ```python
-print(bpo.getCharBmpByUnicode(30340))
+bpo.getCharBmpByUnicode(30340)
 ```
 
 Get hex representation string of bitmap of the character "的":
 
 ```python
-print(bpo.getCharHexByUnicode(30340))
+bpo.getCharHexByUnicode(30340)
 ```
 
 Get hex representation string in bytes of bitmap of the character "的":
 
 ```python
-print(bpo.getCharHexByUnicode(30340).hex())
+bpo.getCharHexByUnicode(30340).hex()
 ```
 
 Get glyph information:
 
 ```python
-print(bpo.getGlyphInfo(30340))
+bpo.getGlyphInfo(30340)
 ```
 
 The above script returns:
@@ -53,13 +53,13 @@ The above script returns:
 Get binary representation of bitmap of the character "￣"
 
 ```python
-print(bpo.getCharBmpByUnicode(65507))
+bpo.getCharBmpByUnicode(65507)
 ```
 
 Get binary representation of bitmap of the character "©" -- "©" does not exist in some font, and does not exist in GBK, therefore it throws an error:
 
 ```python
-print(bpo.getCharBmpByUnicode(169))
+bpo.getCharBmpByUnicode(169)
 ```
 
 ## Projects that use this library
