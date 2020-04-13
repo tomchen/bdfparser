@@ -11,7 +11,7 @@ BdfParserObject.{getCharBmpByUnicode|getCharHexByUnicode|getCharHexByUnicode|get
 
 ## Example
 
-(see also [example.py](https://github.com/tomchen/bdfparser/blob/master/example.py)):
+(see also [example.py](https://github.com/tomchen/bdfparser/blob/master/example.py))
 
 Import library and instantiation:
 
