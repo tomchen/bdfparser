@@ -5,8 +5,8 @@ BDF (Glyph Bitmap Distribution Format) Bitmap Font File Parser (Python).
 ## Usage
 
 ```python
-BdfParserObject = BdfParser(<font_file_path>)
-BdfParserObject.{getCharBmpByUnicode|getCharHexByUnicode|getCharHexByUnicode|getGlyphInfo}(<unicode_decimal>)
+BdfParserObject = BdfParser(<FONT_FILE_PATH>)
+BdfParserObject.{getCharBmpByUnicode|getCharHexByUnicode|getCharHexByUnicode|getGlyphInfo}(<UNICODE_DECIMAL>)
 ```
 
 ## Example
