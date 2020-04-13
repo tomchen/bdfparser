@@ -245,15 +245,3 @@ class BdfParser(object):
 	def getBlackedCharHex(self, bmpCode):
 		return bytes(bmpCode, 'ascii').replace(b'0', b'\x00').replace(b'1', b'\x01').replace(b'\n', b'')
 		# return bmpCode.replace('0', '00').replace('1', '01').replace('\n', '')
-
-# test
-# bpo = BdfParser('SimSun-14.bdf')
-# bpo = BdfParser('FZCKJW-GB1-0-26.bdf')
-
-# print(bpo.getCharBmpByUnicode(30340)) # 的
-# print(bpo.getCharHexByUnicode(30340)) # 的
-# print(bpo.getCharHexByUnicode(30340).hex()) # 的
-
-# print(bpo.getGlyphInfo(30340))
-# print(bpo.getCharBmpByUnicode(65507)) # ￣
-# print(bpo.getCharBmpByUnicode(169)) # © -- not exist in some font, not exist in GBK
