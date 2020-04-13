@@ -1,15 +1,17 @@
 # BDF Parser
 
-BDF (Glyph Bitmap Distribution Format) Bitmap Font File Parser (Python)
+BDF (Glyph Bitmap Distribution Format) Bitmap Font File Parser (Python).
 
-Usage:
+## Usage
 
 ```python
 BdfParserObject = BdfParser(<font_file_path>)
 BdfParserObject.{getCharBmpByUnicode|getCharHexByUnicode|getCharHexByUnicode|getGlyphInfo}(<unicode_decimal>)
 ```
 
-Example (see also [example.py](https://github.com/tomchen/bdfparser/blob/master/example.py)):
+## Example
+
+(see also [example.py](https://github.com/tomchen/bdfparser/blob/master/example.py)):
 
 Import library and instantiation:
 
@@ -59,3 +61,7 @@ Get binary representation of bitmap of the character "©" -- "©" does not exist
 ```python
 print(bpo.getCharBmpByUnicode(169))
 ```
+
+## Projects that use this library
+
+[FNT Generator](https://github.com/might-and-magic/fnt-generator): Might and Magic 6 7 8 and Heroes 3 font File Generator in Python. Another project of mine
