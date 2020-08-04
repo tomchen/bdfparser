@@ -1,5 +1,7 @@
 # BDF Parser
 
+[![MIT License](https://img.shields.io/github/license/tomchen/bdfparser)](https://github.com/tomchen/bdfparser/blob/master/LICENSE "MIT License")
+
 BDF (Glyph Bitmap Distribution Format) Bitmap Font File Parser (Python).
 
 ## Usage
