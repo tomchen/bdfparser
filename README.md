@@ -66,7 +66,7 @@ bpo.getCharBmpByUnicode(169)
 
 ## Other tools
 * [Example .bdf fonts](https://github.com/tomchen/bdfparser/tree/master/example_fonts/bdf):
-  * GNU Unifont ([Wikipedia article](https://en.wikipedia.org/wiki/GNU_Unifont); [Homepage](https://unifoundry.com/unifont/index.html)): Unicode font (intended to support "all" common languages; )
+  * GNU Unifont ([Wikipedia article](https://en.wikipedia.org/wiki/GNU_Unifont); [Homepage](https://unifoundry.com/unifont/index.html)): Unicode font (intended to support "all" common languages)
   * M+ FONTS ([Wikipedia article](https://en.wikipedia.org/wiki/M%2B_FONTS); [Homepage](https://mplus-fonts.osdn.jp/about-en.html)): Japanese font
   * HanWangYanKai 王漢宗自由字型顏體 ([Chinese Wikipedia article](https://zh.wikipedia.org/wiki/%E7%8E%8B%E6%BC%A2%E5%AE%97%E8%87%AA%E7%94%B1%E5%AD%97%E5%9E%8B)): Traditional Chinese font
   * See also some typical but non-free, fair-used Chinese fonts in [another repo](https://github.com/might-and-magic/fnt-generator#other-tools)
