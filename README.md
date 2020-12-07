@@ -64,6 +64,12 @@ Get binary representation of bitmap of the character "©" -- "©" does not exist
 bpo.getCharBmpByUnicode(169)
 ```
 
+Get the declared font name:
+
+```python
+bpo.getFontName()
+```
+
 ## Other tools
 * [Example .bdf fonts](https://github.com/tomchen/bdfparser/tree/master/example_fonts/bdf):
   * GNU Unifont ([Wikipedia article](https://en.wikipedia.org/wiki/GNU_Unifont); [Homepage](https://unifoundry.com/unifont/index.html)): Unicode font (intended to support "all" common languages)

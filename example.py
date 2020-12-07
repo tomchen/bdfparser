@@ -1,6 +1,6 @@
 import bdfparser as bp
 
-bpo = bp.BdfParser('example_fonts/bdf/SimSun-14.bdf')
+bpo = bp.BdfParser('example_fonts/bdf/unifont-9.0.06.bdf')
 
 print(bpo.getCharBmpByUnicode(30340)) # binary representation of bitmap of the character "的"
 
@@ -13,3 +13,5 @@ print(bpo.getGlyphInfo(30340)) # {'dwx0': 14, 'bbW': 12, 'bbH': 14, 'bbXOff': 1,
 print(bpo.getCharBmpByUnicode(65507)) # binary representation of bitmap of the character "￣"
 
 print(bpo.getCharBmpByUnicode(169)) # binary representation of bitmap of the character "©" -- "©" does not exist in some font, and does not exist in GBK, therefore it throws an error
+
+print(bpo.getFontName()) # name of the font from the FONT declaration
