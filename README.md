@@ -19,7 +19,7 @@ Import library and instantiation:
 
 ```python
 import bdfparser as bp
-bpo = bp.BdfParser('example_fonts/bdf/SimSun-14.bdf')
+bpo = bp.BdfParser('example_fonts/bdf/unifont-9.0.06.bdf')
 ```
 
 Get binary representation string of bitmap of the character "的":
@@ -49,25 +49,32 @@ bpo.getGlyphInfo(30340)
 The above script returns:
 
 ```python
-{'dwx0': 14, 'bbW': 12, 'bbH': 14, 'bbXOff': 1, 'bbYOff': -2, 'bitmap': '2100\n2100\n41F0\nFA10\n8C10\n8810\n8910\nF890\n8890\n8810\n8810\n8810\nF810\n8860', 'outputW': 14, 'outputH': 15, 'shadowedOutputW': 15, 'shadowedOutputH': 16, 'glowedOutputW': 16, 'glowedOutputH': 17}
+{'dwx0': 16, 'bbW': 16, 'bbH': 16, 'bbXOff': 0, 'bbYOff': -2, 'bitmap': '1040\n1040\n2040\n7E7C\n4284\n4284\n4304\n4244\n7E24\n4224\n4204\n4204\n4204\n7E04\n4228\n0010', 'outputW': 16, 'outputH': 16, 'shadowedOutputW': 17, 'shadowedOutputH': 17, 'glowedOutputW': 18, 'glowedOutputH': 18}
 ```
 
-Get binary representation of bitmap of the character "￣"
+Get binary representation of bitmap of the character "￣":
 
 ```python
 bpo.getCharBmpByUnicode(65507)
 ```
 
-Get binary representation of bitmap of the character "©" -- "©" does not exist in some font, and does not exist in GBK, therefore it throws an error:
+Get binary representation of bitmap of the character "©":
 
 ```python
 bpo.getCharBmpByUnicode(169)
 ```
 
-Get the declared font name:
+However, if you use HanWangYanKai font which covers Big5 characters, because "©" does not exist in Big5 and HanWangYanKai font, it throws an error in the following example:
 
 ```python
-bpo.getFontName()
+bpo = bp.BdfParser('example_fonts/bdf/HanWangYanKai-26.bdf')
+print(bpo.getCharBmpByUnicode(169))
+```
+
+Name of the font (from the "FONT" declaration in the BDF file):
+
+```python
+print(bpo.getFontName())
 ```
 
 ## Other tools
