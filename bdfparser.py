@@ -39,6 +39,9 @@ class BdfParser(object):
 	def __init__(self, bdfFileName):
 		self.file = open(bdfFileName, 'r')
 		self.bdfContent = self.file.read()
+		# FONT name
+		fontResult = re.search(r'^\s*FONT\s*(?P<name>.*)\s*\n', self.bdfContent, re.MULTILINE)
+		self.name = fontResult.group('name')
 		fbbResult = re.search(r'^\s*FONTBOUNDINGBOX\s*(?P<fbbw>[-\d]+)\s*(?P<fbbh>[-\d]+)\s*(?P<fbbxoff>[-\d]+)\s*(?P<fbbyoff>[-\d]+)\s*$', self.bdfContent, re.MULTILINE)
 		# FONTBOUNDINGBOX FBBw FBBh Xoff Yoff
 		self.fbbW         = int(fbbResult.group('fbbw'))
@@ -100,6 +103,9 @@ class BdfParser(object):
 		res = format(theInt, '0' + str(lenTemp) + 'b')
 		res = res[:number]
 		return res
+
+	def getFontName(self):
+		return self.name
 
 	def getCharBmpByUnicode(self, uCode):
 		thisGlyphInfo = self.getGlyphInfo(uCode)
