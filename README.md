@@ -2,80 +2,9 @@
 
 [![MIT License](https://img.shields.io/github/license/tomchen/bdfparser)](https://github.com/tomchen/bdfparser/blob/master/LICENSE "MIT License")
 
-BDF (Glyph Bitmap Distribution Format) Bitmap Font File Parser (Python).
+BDF (Glyph Bitmap Distribution Format) Bitmap Font File Parser in Python
 
-## Usage
-
-```python
-BdfParserObject = BdfParser(<FONT_FILE_PATH>)
-BdfParserObject.{getCharBmpByUnicode|getCharHexByUnicode|getCharHexByUnicode|getGlyphInfo}(<UNICODE_DECIMAL>)
-```
-
-## Example
-
-(see also [example.py](https://github.com/tomchen/bdfparser/blob/master/example.py))
-
-Import library and instantiation:
-
-```python
-import bdfparser as bp
-bpo = bp.BdfParser('example_fonts/bdf/unifont-9.0.06.bdf')
-```
-
-Get binary representation string of bitmap of the character "的":
-
-```python
-bpo.getCharBmpByUnicode(30340)
-```
-
-Get hex representation string of bitmap of the character "的":
-
-```python
-bpo.getCharHexByUnicode(30340)
-```
-
-Get hex representation string in bytes of bitmap of the character "的":
-
-```python
-bpo.getCharHexByUnicode(30340).hex()
-```
-
-Get glyph information:
-
-```python
-bpo.getGlyphInfo(30340)
-```
-
-The above script returns:
-
-```python
-{'dwx0': 16, 'bbW': 16, 'bbH': 16, 'bbXOff': 0, 'bbYOff': -2, 'bitmap': '1040\n1040\n2040\n7E7C\n4284\n4284\n4304\n4244\n7E24\n4224\n4204\n4204\n4204\n7E04\n4228\n0010', 'outputW': 16, 'outputH': 16, 'shadowedOutputW': 17, 'shadowedOutputH': 17, 'glowedOutputW': 18, 'glowedOutputH': 18}
-```
-
-Get binary representation of bitmap of the character "￣":
-
-```python
-bpo.getCharBmpByUnicode(65507)
-```
-
-Get binary representation of bitmap of the character "©":
-
-```python
-bpo.getCharBmpByUnicode(169)
-```
-
-However, if you use HanWangYanKai font which covers Big5 characters, because "©" does not exist in Big5 and HanWangYanKai font, it throws an error in the following example:
-
-```python
-bpo = bp.BdfParser('example_fonts/bdf/HanWangYanKai-26.bdf')
-print(bpo.getCharBmpByUnicode(169))
-```
-
-Name of the font (from the "FONT" declaration in the BDF file):
-
-```python
-print(bpo.getFontName())
-```
+Version 2
 
 ## Other tools
 * [Example .bdf fonts](https://github.com/tomchen/bdfparser/tree/master/example_fonts/bdf):
