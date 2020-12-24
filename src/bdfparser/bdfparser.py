@@ -344,7 +344,7 @@ class Font(object):
     def glyph(self, character):
         return self.glyphbycp(ord(character))
 
-    def drawcps(self, cps, linelimit=800, mode=1, direction='lrtb', usecurrentglyphspacing=False):
+    def drawcps(self, cps, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False):
         # `mode`: 0: ffb; 1: dwidth horizontally, dwidth1 vertically
         # `direction`:
         # * 'lrtb' or 'lr': left to right, lines from top to bottom (most common direction)
@@ -468,10 +468,10 @@ class Font(object):
 
         return Bitmap.concatall(list_of_bitmap_line_lists, direction=dire_line, align=align_line)
 
-    def draw(self, string, linelimit=800, mode=1, direction='lrtb', usecurrentglyphspacing=False):
+    def draw(self, string, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False):
         return self.drawcps((ord(cp) for cp in string), linelimit, mode, direction, usecurrentglyphspacing)
 
-    def drawall(self, order=1, r=None, linelimit=800, mode=0, direction='lrtb', usecurrentglyphspacing=False):
+    def drawall(self, order=1, r=None, linelimit=512, mode=0, direction='lrtb', usecurrentglyphspacing=False):
         return self.drawcps(self.itercps(order, r), linelimit, mode, direction, usecurrentglyphspacing)
 
 
@@ -493,21 +493,24 @@ class Glyph(object):
     def chr(self):
         return chr(self.cp())
 
-    def draw(self, mode=0, fbb=None):
+    def draw(self, mode=0, bb=None):
         if mode == 0:
             retbitmap = self.__draw_fbb()
         elif mode == 1:
             retbitmap = self.__draw_bb()
         elif mode == 2:
             retbitmap = self.__draw_original()
-        elif mode == -1 and fbb is not None:
-            retbitmap = self.__draw_user_specified(fbb)
+        elif mode == -1 and bb is not None:
+            retbitmap = self.__draw_user_specified(bb)
+        elif mode == -1 and bb is None:
+            raise Exception(
+                'Parameter bb in draw() method must be set when mode=-1')
         return retbitmap
 
-# 0 (default): area represented by the bitmap hex data, positioned and resized (cropped) (`fbbx` × `fbby`) according to `FONTBOUNDINGBOX` (the font's global bounding box)
-# 1: area represented by the bitmap hex data, resized (cropped) according to `BBX` (`bbw` × `bbh`), which is the individual glyph bounding box, without unnecessary blank margin (but still possible to have blank margin)
-# 2: area represented by the bitmap hex data, original, without resizing
-# -1: user specified area. if this mode is chosen, you must specify `fbb`, which is a tuple (fbbx, fbby, fbbxoff, fbbyoff) representing your customized font bounding box. Similar to `FONTBOUNDINGBOX`, fbbx and fbby represent the size, fbbxoff and fbbyoff represent the relative position of the starting point to the origin
+        # 0 (default): area represented by the bitmap hex data, positioned and resized (cropped) (`fbbx` × `fbby`) according to `FONTBOUNDINGBOX` (the font's global bounding box)
+        # 1: area represented by the bitmap hex data, resized (cropped) according to `BBX` (`bbw` × `bbh`), which is the individual glyph bounding box, without unnecessary blank margin (but still possible to have blank margin)
+        # 2: area represented by the bitmap hex data, original, without resizing
+        # -1: user specified area. if this mode is chosen, you must specify `fbb`, which is a tuple (fbbx, fbby, fbbxoff, fbbyoff) representing your customized font bounding box. Similar to `FONTBOUNDINGBOX`, fbbx and fbby represent the size, fbbxoff and fbbyoff represent the relative position of the starting point to the origin
 
     def __draw_user_specified(self, fbb):
         bbxoff = self.meta.get('bbxoff')
@@ -534,6 +537,24 @@ class Glyph(object):
     def __draw_fbb(self):
         fh = self.font.headers
         return self.__draw_user_specified((fh['fbbx'], fh['fbby'], fh['fbbxoff'], fh['fbbyoff']))
+
+    # get the relative position (displacement) of the origin from the left bottom corner of the bitmap drawn by method `draw()`, or vice versa (i.e. displacement of the left bottom corner of the bitmap from the origin)
+    def origin(self, mode=0, fromorigin=False, xoff=None, yoff=None):
+        bbxoff = self.meta.get('bbxoff')
+        bbyoff = self.meta.get('bbyoff')
+        if mode == 0:
+            fh = self.font.headers
+            ret = (fh['fbbxoff'], fh['fbbyoff'])
+        elif mode == 1:
+            ret = (bbxoff, bbyoff)
+        elif mode == 2:
+            ret = (bbxoff, bbyoff)
+        elif mode == -1 and (xoff is not None and yoff is not None):
+            ret = (xoff, yoff)
+        elif mode == -1 and (xoff is None or yoff is None):
+            raise Exception(
+                'Parameter xoff and yoff in origin() method must be all set when mode=-1')
+        return ret if fromorigin else (0 - ret[0], 0 - ret[1])
 
 
 class Bitmap(object):
@@ -644,7 +665,6 @@ class Bitmap(object):
         # direction: 1: right, 0: down, 2: left, -1: up
         # if horizontal (1 right or 2 left): align: 1: bottom;  0: top
         # if vertical (0 down or -1 up)    : align: 1: left; 0: right
-        offset = 0
 
         if direction > 0:  # horizontal
 
@@ -663,6 +683,8 @@ class Bitmap(object):
                 else:  # top
                     ireal = i
 
+                offset = 0
+
                 for bi, bitmap in enumerate(bitmaplist):
 
                     if offsetlist and bi != 0:
@@ -679,6 +701,7 @@ class Bitmap(object):
 
             maxsize = max(bitmap.width() for bitmap in bitmaplist)
             ret = []
+            offset = 0
 
             for bi, bitmap in enumerate(bitmaplist):
 
@@ -833,11 +856,12 @@ class Bitmap(object):
         # * 'RGBA': 4x8-bit pixels, true color with transparency mask
 
         if mode == '1':
+
             if bytesdict == None:
                 bytesdict = {
                     0: 1,
                     1: 0,
-                    2: 1,
+                    2: 0,
                 }
             # For PIL Image mode '1', if the line bit count is not multiples of 8, it must be padded with 0 to the right
             bits = []
@@ -858,8 +882,11 @@ class Bitmap(object):
                     res <<= 1
                     res |= bytesdict[bit]
                 return res
+
             return bytes(bits2byte(octet) for octet in octets)
+
         else:
+
             if mode == 'L':
                 bytesdict = bytesdict or {
                     0: b'\xff',

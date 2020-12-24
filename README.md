@@ -1,10 +1,8 @@
 # BDF Parser
 
-[![MIT License](https://img.shields.io/github/license/tomchen/bdfparser)](https://github.com/tomchen/bdfparser/blob/master/LICENSE "MIT License")
+[![PyPI package](https://img.shields.io/badge/pip%20install-bdfparser-brightgreen)](https://pypi.org/project/example-pypi-package/) [![Actions Status](https://github.com/tomchen/bdfparser/workflows/Test/badge.svg)](https://github.com/tomchen/bdfparser/actions) [![License](https://img.shields.io/github/license/tomchen/bdfparser)](https://github.com/tomchen/bdfparser/blob/master/LICENSE)
 
-BDF (Glyph Bitmap Distribution Format) Bitmap Font File Parser in Python
-
-Version 2
+BDF (Glyph Bitmap Distribution) format bitmap font file parser library in Python. It has 3 classes `Font`, `Glyph` and `Bitmap` providing more than 30 enriched API methods (functions) for parsing BDF fonts, getting their meta information, rendering text in any writing direction, adding special effects and manipulating bitmap images. It works seamlessly with PIL / Pillow and NumPy. It also has [**detailed documentation / tutorials / API reference**](https://tomchen.org/bdfparser_py/ "BDF Parser Python library's documentation / tutorials / API reference") that I strongly recommend you read.
 
 ## Other tools
 * [Example .bdf fonts](https://github.com/tomchen/bdfparser/tree/master/example_fonts/bdf):
