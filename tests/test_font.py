@@ -1,7 +1,5 @@
 import unittest
-
 from bdfparser import Font, Glyph
-
 from .info import unifont_path, glyph_a_meta
 
 
@@ -18,7 +16,8 @@ class TestFontLoading(unittest.TestCase):
         self.assertIsInstance(self.font.load_file_path(unifont_path), Font)
 
     def test_load_file_obj(self):
-        self.assertIsInstance(self.font.load_file_obj(open(unifont_path)), Font)
+        self.assertIsInstance(
+            self.font.load_file_obj(open(unifont_path)), Font)
 
 
 class TestFont(unittest.TestCase):

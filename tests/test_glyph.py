@@ -1,7 +1,5 @@
 import unittest
-
 from bdfparser import Font, Glyph
-
 from .info import unifont_path, glyph_a_meta, bitmap_a_bindata, specfont_path
 
 

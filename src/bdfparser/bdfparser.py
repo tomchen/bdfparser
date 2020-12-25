@@ -1,10 +1,12 @@
 # BDF (Glyph Bitmap Distribution Format) Bitmap Font File Parser in Python
 # Copyright (c) 2017-2021 Tom CHEN (tomchen.org), MIT License
+# https://font.tomchen.org/bdfparser_py/
 
 
 import re
 import io
 import warnings
+from sys import version_info as python_version
 
 
 def format_warning(message, category, filename, lineno, file=None, line=None):
@@ -39,9 +41,16 @@ class Font(object):
     ]
 
     def __init__(self, *argv):
+
+        if python_version < (3, 7, 0):
+            from collections import OrderedDict as ordered_dict
+        else:
+            ordered_dict = dict
+        self.glyphs = ordered_dict()
+
         self.headers = {}
         self.props = {}
-        self.glyphs = {}
+
         self.__glyph_count_to_check = None
         self.__curline_startchar = None
         self.__curline_chars = None
@@ -291,7 +300,12 @@ class Font(object):
                     "The glyph count next to 'CHARS' keyword does not exist")
             else:
                 warnings.warn(
-                    f"The glyph count next to 'CHARS' keyword is {str(self.__glyph_count_to_check)}, which does not match the actual glyph count {str(l)}")
+                    "The glyph count next to 'CHARS' keyword is " +
+                    str(self.__glyph_count_to_check) +
+                    ", which does not match the actual glyph count " + str(l)
+                )
+                # Use old style for Python 3.5 support. For 3.6+:
+                # f"The glyph count next to 'CHARS' keyword is {str(self.__glyph_count_to_check)}, which does not match the actual glyph count {str(l)}"
 
     def length(self):
         return len(self.glyphs)
@@ -300,13 +314,7 @@ class Font(object):
         return self.length()
 
     def itercps(self, order=1, r=None):
-        # order: -1: reverse order in the BDF font file; 0: order in the BDF font file;
-        #         1: ascending codepoint order; 2: descending codepoint order
-        # r: codepoint range, accepts:
-        #          * integer (examples: `128` (Basic Latin / ASCII), `0x100` (Basic Latin and Latin-1 Supplement / cp1250 / cp1251 / cp1252))
-        #          * tuple of integers (examples: `(0, 127)` (same as `128`), `(0, 0xff)` (same as `0x100`), `(48, 57)` (all numbers 0-9), `(65, 90)` (all uppercase basic latin letters A-Z), `(97, 122)` (all lowercase basic latin letters a-z), `(1328, 0x1032F)`)
-        #          * list of tuples of integers (example: `[(65, 90), (97, 122)]` (all basic latin letters A-Za-z), `[(0x2E80, 0x9FFF), (0xA960, 0xA97F), (0xAC00, 0xD7FF), (0xF900, 0xFAFF), (0xFE30, 0xFE4F), (0xFF00, 0xFFEF), (0x20000, 0x3134F)]` (this is roughly all CJK characters in the Unicode))
-        # see also https://en.wikipedia.org/wiki/Unicode_block
+        # https://font.tomchen.org/bdfparser_py/font/#iterglyphs
 
         ks = self.glyphs.keys()
         if order == 1:
@@ -316,7 +324,10 @@ class Font(object):
         elif order == 2:
             retiterator = iter(sorted(ks, reverse=True))
         elif order == -1:
-            retiterator = reversed(ks)
+            try:
+                retiterator = reversed(ks)
+            except TypeError:
+                retiterator = reversed(list(ks))  # Python <=3.7
         if r is not None:
             def f(cp):
                 if isinstance(r, int):
@@ -338,25 +349,18 @@ class Font(object):
     def glyphbycp(self, codepoint):
         if codepoint not in self.glyphs:
             raise Exception(
-                f"Glyph \"{chr(codepoint)}\" (codepoint {str(codepoint)}) does not exist in the font")
+                "Glyph \"" + chr(codepoint) + "\" (codepoint " +
+                str(codepoint) + ") does not exist in the font"
+            )
+            # Use old style for Python 3.5 support. For 3.6+:
+            # f"Glyph \"{chr(codepoint)}\" (codepoint {str(codepoint)}) does not exist in the font"
         return Glyph(dict(zip(self.__META_TITLES, self.glyphs[codepoint])), self)
 
     def glyph(self, character):
         return self.glyphbycp(ord(character))
 
     def drawcps(self, cps, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False):
-        # `mode`: 0: ffb; 1: dwidth horizontally, dwidth1 vertically
-        # `direction`:
-        # * 'lrtb' or 'lr': left to right, lines from top to bottom (most common direction)
-        # * 'lrbt'        : left to right, lines from bottom to top
-        # * 'rltb' or 'rl': right to left, lines from top to bottom (Arabic, Hebrew, Persian, Urdu)
-        # * 'rlbt'        : right to left, lines from bottom to top
-        # * 'tbrl' or 'tb': top to bottom, lines from right to left (Chinese traditionally)
-        # * 'tblr'        : top to bottom, lines from left to right
-        # * 'btrl' or 'bt': bottom to top, lines from right to left
-        # * 'btlr'        : bottom to top, lines from left to right
-        # `usecurrentglyphspacing` is useful when direction='rl', example: see the difference between
-        # `font.draw('U的', direction='rl')` and `font.draw('U的', direction='rl', usecurrentglyphspacing=True)`
+        # https://font.tomchen.org/bdfparser_py/font#draw
 
         dire_shortcut_dict = {
             'lr': 'lrtb',
@@ -409,7 +413,9 @@ class Font(object):
                 interglyph_global = self.headers[interglyph_str2]
             else:
                 interglyph_global = None
-                # warnings.warn(f"The font do not have `{interglyph_keyword}`, glyph spacing adjustment could be skipped unless present in individual glyphs")
+                # warnings.warn("The font do not have `" + interglyph_keyword + "`, glyph spacing adjustment could be skipped unless present in individual glyphs")
+                # # Use old style for Python 3.5 support. For 3.6+:
+                # # warnings.warn(f"The font do not have `{interglyph_keyword}`, glyph spacing adjustment could be skipped unless present in individual glyphs")
 
         list_of_bitmaplist = []
         bitmaplist = []
@@ -454,7 +460,11 @@ class Font(object):
             else:
                 if len(bitmaplist) == 0:
                     raise Exception(
-                        f"`linelimit` ({linelimit}) is too small the line can't even contain one glyph: \"{glyph.chr()}\" (codepoint {cp}, width: {w})")
+                        "`linelimit` (" + linelimit + ") is too small the line can't even contain one glyph: \"" +
+                        glyph.chr() + "\" (codepoint " + cp + ", width: " + w + ")"
+                    )
+                    # Use old style for Python 3.5 support. For 3.6+:
+                    # f"`linelimit` ({linelimit}) is too small the line can't even contain one glyph: \"{glyph.chr()}\" (codepoint {cp}, width: {w})"
                 append_bitmaplist_and_offsetlist()
                 size = 0
                 bitmaplist = []
@@ -494,6 +504,8 @@ class Glyph(object):
         return chr(self.cp())
 
     def draw(self, mode=0, bb=None):
+        # https://font.tomchen.org/bdfparser_py/glyph#draw
+
         if mode == 0:
             retbitmap = self.__draw_fbb()
         elif mode == 1:
@@ -506,11 +518,6 @@ class Glyph(object):
             raise Exception(
                 'Parameter bb in draw() method must be set when mode=-1')
         return retbitmap
-
-        # 0 (default): area represented by the bitmap hex data, positioned and resized (cropped) (`fbbx` × `fbby`) according to `FONTBOUNDINGBOX` (the font's global bounding box)
-        # 1: area represented by the bitmap hex data, resized (cropped) according to `BBX` (`bbw` × `bbh`), which is the individual glyph bounding box, without unnecessary blank margin (but still possible to have blank margin)
-        # 2: area represented by the bitmap hex data, original, without resizing
-        # -1: user specified area. if this mode is chosen, you must specify `fbb`, which is a tuple (fbbx, fbby, fbbxoff, fbbyoff) representing your customized font bounding box. Similar to `FONTBOUNDINGBOX`, fbbx and fbby represent the size, fbbxoff and fbbyoff represent the relative position of the starting point to the origin
 
     def __draw_user_specified(self, fbb):
         bbxoff = self.meta.get('bbxoff')
@@ -530,7 +537,11 @@ class Glyph(object):
         l = len(bindata)
         if l != bbh:
             raise Exception(
-                f"Glyph \"{str(self.meta.get('glyphname'))}\" (codepoint {str(self.meta.get('codepoint'))})'s bbh, {str(bbh)}, does not match its hexdata line count, {str(l)}")
+                "Glyph \"" + str(self.meta.get('glyphname')) + "\" (codepoint " + str(self.meta.get(
+                    'codepoint')) + ")'s bbh, " + str(bbh) + ", does not match its hexdata line count, " + str(l)
+            )
+            # Use old style for Python 3.5 support. For 3.6+:
+            # f"Glyph \"{str(self.meta.get('glyphname'))}\" (codepoint {str(self.meta.get('codepoint'))})'s bbh, {str(bbh)}, does not match its hexdata line count, {str(l)}"
         bitmap.bindata = [b[0:bbw] for b in bindata]
         return bitmap
 
@@ -538,8 +549,9 @@ class Glyph(object):
         fh = self.font.headers
         return self.__draw_user_specified((fh['fbbx'], fh['fbby'], fh['fbbxoff'], fh['fbbyoff']))
 
-    # get the relative position (displacement) of the origin from the left bottom corner of the bitmap drawn by method `draw()`, or vice versa (i.e. displacement of the left bottom corner of the bitmap from the origin)
     def origin(self, mode=0, fromorigin=False, xoff=None, yoff=None):
+        # https://font.tomchen.org/bdfparser_py/glyph#origin
+
         bbxoff = self.meta.get('bbxoff')
         bbyoff = self.meta.get('bbyoff')
         if mode == 0:
@@ -661,10 +673,7 @@ class Bitmap(object):
 
     @classmethod
     def concatall(cls, bitmaplist, direction=1, align=1, offsetlist=None):
-        # offsetlist is spacing offset between two glyphs, len(offsetlist) should be len(bitmaplist)-1
-        # direction: 1: right, 0: down, 2: left, -1: up
-        # if horizontal (1 right or 2 left): align: 1: bottom;  0: top
-        # if vertical (0 down or -1 up)    : align: 1: left; 0: right
+        # https://font.tomchen.org/bdfparser_py/bitmap#bitmapconcatall
 
         if direction > 0:  # horizontal
 
@@ -809,11 +818,8 @@ class Bitmap(object):
         return self
 
     def bytepad(self, bits=8):
-        # Do this before using the bitmap for a glyph in a BDF font.
-        # Per BDF spec, if the bit/pixel count in a line is not multiple of 8,
-        # the line needs to be padded on the right with 0s to the nearest byte (that is, multiple of 8)
-        # `bits` is 8 by default because 1 byte = 8 bits,
-        # you can change it if you want to use other unconventional, off-spec values, such as 4 (half a byte)
+        # https://font.tomchen.org/bdfparser_py/bitmap#bytepad
+
         w = self.width()
         h = self.height()
         mod = w % bits
@@ -822,14 +828,7 @@ class Bitmap(object):
         return self.crop(w + bits - mod, h)
 
     def todata(self, datatype=1):
-        # `datatype`: output data type
-        # * 0 : binary-encoded multi-line string e.g. '00010\n11010\n00201'
-        # * 1 : list of binary-encoded strings e.g. ['00010','11010','00201']
-        # * 2 : list of lists of integers 0 or 1 (or 2 sometimes) e.g. [[0,0,0,1,0],[1,1,0,1,0],[0,0,2,0,1]]
-        # * 3 : list of integers 0 or 1 (or 2 sometimes) (to be used with .width() and .height()) e.g. [0,0,0,1,0,1,1,0,1,0,0,0,2,0,1]
-        # * 4 : list of lowercase hexadecimal-encoded strings (without '0x', padded with leading '0's according to width) e.g. ['02','1a']
-        # * 5 : list of integers e.g. [2,26]
-        # NOTE: you can't have '2's when using datatypes 4 and 5
+        # https://font.tomchen.org/bdfparser_py/bitmap#todata
 
         if datatype == 0:
             return '\n'.join(self.bindata)
@@ -847,13 +846,7 @@ class Bitmap(object):
             return [int(l, 2) for l in self.bindata]
 
     def tobytes(self, mode='RGB', bytesdict=None):
-        # output bytes to be used to create PIL / Pillow library image with `Image.frombytes()`
-        # `mode`: PIL image mode
-        # (see also https://pillow.readthedocs.io/en/stable/handbook/concepts.html#modes , but only the followings are supported)
-        # * '1'   : 1-bit pixels, black and white, stored with one pixel per byte
-        # * 'L'   : 8-bit pixels, black and white
-        # * 'RGB' : 3x8-bit pixels, true color
-        # * 'RGBA': 4x8-bit pixels, true color with transparency mask
+        # https://font.tomchen.org/bdfparser_py/bitmap#tobytes
 
         if mode == '1':
 

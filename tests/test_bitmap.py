@@ -1,7 +1,5 @@
 import unittest
-
 from bdfparser import Font, Bitmap
-
 from .info import specfont_path, bitmap_qr2_bindata, bitmap_qr3_bindata
 
 
