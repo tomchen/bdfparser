@@ -379,7 +379,10 @@ class Font(object):
         elif order == 2:
             retiterator = iter(sorted(ks, reverse=True))
         elif order == -1:
-            retiterator = reversed(ks)
+            try:
+                retiterator = reversed(ks)
+            except TypeError:
+                retiterator = reversed(list(ks))  # Python <=3.7
         if r is not None:
             def f(cp):
                 if isinstance(r, int):

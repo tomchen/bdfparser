@@ -2,6 +2,5 @@
   "python.testing.unittestEnabled": false,
   "python.testing.nosetestsEnabled": false,
   "python.testing.pytestEnabled": true,
-  "python.envFile": "${workspaceRoot}/vscode.env",
-  "python.pythonPath": "C:\\Users\\Chen\\AppData\\Local\\Programs\\Python\\Python39\\python.exe"
+  "python.envFile": "${workspaceRoot}/vscode.env"
 }
