@@ -27,6 +27,7 @@ ac = font.glyph("a").draw().crop(6, 8, 1, 2).concat(
     font.glyph("c").draw().crop(6, 8, 1, 2)
     ).shadow()
 ac_8x8 = ac * 8
+
 from PIL import Image
 im_ac = Image.frombytes('RGBA',
                         (ac_8x8.width(), ac_8x8.height()),
@@ -37,6 +38,7 @@ im_ac.save("ac.png", "PNG")
 
 hello = font.draw('Hello!', direction='rl').glow()
 print(hello)
+
 import numpy
 import matplotlib.pyplot as plt
 nparr = numpy.array(hello.todata(2))
@@ -52,4 +54,12 @@ im_ac = Image.frombytes('1',
 im_ac.save("font_preview.png", "PNG")
 ```
 
-You probably understand what I did in these examples. Whether you do or not, go to [bdfparser's documentation website](https://font.tomchen.org/bdfparser_py/).
+You probably understand what I did in these examples. Whether you do or not, go to [**bdfparser's documentation website**](https://font.tomchen.org/bdfparser_py/).
+
+<p align="center">
+<a href="https://font.tomchen.org/bdfparser_py/">
+<img src="https://font.tomchen.org/img/bdfparser_py/ac.png" /><br>
+<img src="https://font.tomchen.org/img/bdfparser_py/plot.png" /><br>
+<img src="https://font.tomchen.org/img/bdfparser_py/font_preview_part.png" />
+</a>
+</p>

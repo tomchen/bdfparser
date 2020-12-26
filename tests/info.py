@@ -76,3 +76,5 @@ bitmap_qr3_bindata = [
     '1020000021',
     '0100000000'
 ]
+
+missing_glyph_meta = {'glyphname': 'missing glyph', 'codepoint': 0, 'bbw': 16, 'bbh': 16, 'bbxoff': 0, 'bbyoff': -2, 'swx0': 1000, 'swy0': 0, 'dwx0': 16, 'dwy0': 0, 'swx1': None, 'swy1': None, 'dwx1': None, 'dwy1': None, 'vvectorx': None, 'vvectory': None, 'hexdata': ['0000', '0000', '0000', '3ff8', '3018', '2828', '2448', '2288', '2108', '2288', '2448', '2828', '3018', '3ff8', '0000', '0000']}

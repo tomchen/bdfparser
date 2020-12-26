@@ -40,16 +40,37 @@ class Font(object):
         'hexdata',
     ]
 
+    __EMPTY_GLYPH = {
+        'glyphname': 'empty',
+        'codepoint': 8203,  # zero-width space's codepoint
+        'bbw': 0,
+        'bbh': 0,
+        'bbxoff': 0,
+        'bbyoff': 0,
+        'swx0': 0,
+        'swy0': 0,
+        'dwx0': 0,
+        'dwy0': 0,
+        'swx1': 0,
+        'swy1': 0,
+        'dwx1': 0,
+        'dwy1': 0,
+        'vvectorx': 0,
+        'vvectory': 0,
+        'hexdata': [],
+    }
+
+
     def __init__(self, *argv):
 
         if python_version < (3, 7, 0):
             from collections import OrderedDict as ordered_dict
         else:
             ordered_dict = dict
-        self.glyphs = ordered_dict()
 
-        self.headers = {}
-        self.props = {}
+        self.headers = ordered_dict()
+        self.props = ordered_dict()
+        self.glyphs = ordered_dict()
 
         self.__glyph_count_to_check = None
         self.__curline_startchar = None
@@ -324,10 +345,7 @@ class Font(object):
         elif order == 2:
             retiterator = iter(sorted(ks, reverse=True))
         elif order == -1:
-            try:
-                retiterator = reversed(ks)
-            except TypeError:
-                retiterator = reversed(list(ks))  # Python <=3.7
+            retiterator = reversed(ks)
         if r is not None:
             def f(cp):
                 if isinstance(r, int):
@@ -348,10 +366,11 @@ class Font(object):
 
     def glyphbycp(self, codepoint):
         if codepoint not in self.glyphs:
-            raise Exception(
+            warnings.warn(
                 "Glyph \"" + chr(codepoint) + "\" (codepoint " +
-                str(codepoint) + ") does not exist in the font"
+                str(codepoint) + ") does not exist in the font. Will return `None`"
             )
+            return None
             # Use old style for Python 3.5 support. For 3.6+:
             # f"Glyph \"{chr(codepoint)}\" (codepoint {str(codepoint)}) does not exist in the font"
         return Glyph(dict(zip(self.__META_TITLES, self.glyphs[codepoint])), self)
@@ -359,9 +378,15 @@ class Font(object):
     def glyph(self, character):
         return self.glyphbycp(ord(character))
 
-    def drawcps(self, cps, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False):
-        # https://font.tomchen.org/bdfparser_py/font#draw
+    def lacksglyphs(self, string):
+        l = []
+        for cp, char in ((ord(char), char) for char in string):
+            if cp not in self.glyphs:
+                l.append(char)
+        return l if len(l) != 0 else None
 
+    def drawcps(self, cps, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False, missing=None):
+        # https://font.tomchen.org/bdfparser_py/font#draw
         dire_shortcut_dict = {
             'lr': 'lrtb',
             'rl': 'rltb',
@@ -441,7 +466,16 @@ class Font(object):
                 if cp is None:
                     break
 
-                glyph = self.glyphbycp(cp)
+                if cp in self.glyphs:
+                    glyph = self.glyphbycp(cp)
+                elif missing:
+                    if isinstance(missing, Glyph):
+                        glyph = missing
+                    else:  # isinstance(missing, dict):
+                        glyph = Glyph(missing, self)
+                else:
+                    glyph = Glyph(self.__EMPTY_GLYPH, self)
+
                 bitmap = glyph.draw()
                 w = bitmap.width()
 
@@ -478,8 +512,8 @@ class Font(object):
 
         return Bitmap.concatall(list_of_bitmap_line_lists, direction=dire_line, align=align_line)
 
-    def draw(self, string, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False):
-        return self.drawcps((ord(cp) for cp in string), linelimit, mode, direction, usecurrentglyphspacing)
+    def draw(self, string, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False, missing=None):
+        return self.drawcps((ord(char) for char in string), linelimit, mode, direction, usecurrentglyphspacing, missing)
 
     def drawall(self, order=1, r=None, linelimit=512, mode=0, direction='lrtb', usecurrentglyphspacing=False):
         return self.drawcps(self.itercps(order, r), linelimit, mode, direction, usecurrentglyphspacing)
@@ -504,8 +538,9 @@ class Glyph(object):
         return chr(self.cp())
 
     def draw(self, mode=0, bb=None):
-        # https://font.tomchen.org/bdfparser_py/glyph#draw
-
+        '''
+        http://localhost:3000/bdfparser_py/font#draw
+        '''
         if mode == 0:
             retbitmap = self.__draw_fbb()
         elif mode == 1:
@@ -527,7 +562,7 @@ class Glyph(object):
         return bitmap.crop(fbbx, fbby, - bbxoff + fbbxoff, - bbyoff + fbbyoff)
 
     def __draw_original(self):
-        return Bitmap([bin(int(h, 16))[2:].zfill(len(h) * 4) for h in self.meta.get('hexdata')])
+        return Bitmap([bin(int(h, 16))[2:].zfill(len(h) * 4) if h else '' for h in self.meta.get('hexdata')])
 
     def __draw_bb(self):
         bbw = self.meta.get('bbw')
