@@ -17,6 +17,11 @@ warnings.formatwarning = format_warning
 
 
 class Font(object):
+    '''
+    `Font` object
+
+    https://font.tomchen.org/bdfparser_py/font
+    '''
 
     __PATTERN_VVECTOR_DELIMITER = re.compile(r'[,\s]+')
 
@@ -60,8 +65,12 @@ class Font(object):
         'hexdata': [],
     }
 
-
     def __init__(self, *argv):
+        '''
+        Initialize a `Font` object. Load the BDF font file if a file path string or a file object is present.
+
+        https://font.tomchen.org/bdfparser_py/font#font
+        '''
 
         if python_version < (3, 7, 0):
             from collections import OrderedDict as ordered_dict
@@ -85,11 +94,23 @@ class Font(object):
                 self.load_file_obj(arg)
 
     def load_file_path(self, file_path):
+        '''
+        Load the BDF font file in the file path.
+
+        https://font.tomchen.org/bdfparser_py/font#load_file_path
+        '''
+
         with open(file_path) as file_obj:
             self.load_file_obj(file_obj)
         return self
 
     def load_file_obj(self, file_obj):
+        '''
+        Load the BDF font file object.
+
+        https://font.tomchen.org/bdfparser_py/font#load_file_obj
+        '''
+
         self.__f = file_obj
         self.__parse_headers()
         return self
@@ -329,13 +350,26 @@ class Font(object):
                 # f"The glyph count next to 'CHARS' keyword is {str(self.__glyph_count_to_check)}, which does not match the actual glyph count {str(l)}"
 
     def length(self):
+        '''
+        Returns how many glyphs actually exist in the font.
+
+        https://font.tomchen.org/bdfparser_py/font#length
+        '''
+
         return len(self.glyphs)
 
     def __len__(self):
+        '''
+        Same as `.length()`
+        '''
         return self.length()
 
     def itercps(self, order=1, r=None):
-        # https://font.tomchen.org/bdfparser_py/font/#iterglyphs
+        '''
+        Almost identical to `.iterglyphs()`, except it returns an `iterator` of glyph codepoints instead of an `iterator` of `Glyph` objects.
+
+        https://font.tomchen.org/bdfparser_py/font#itercps
+        '''
 
         ks = self.glyphs.keys()
         if order == 1:
@@ -361,10 +395,22 @@ class Font(object):
         return retiterator
 
     def iterglyphs(self, order=1, r=None):
+        '''
+        Returns an iterator of all the glyphs (as `Glyph` objects) in the font (default) or in the specified codepoint range in the font, sorted by the specified order (or by the ascending codepoint order by default).
+
+        https://font.tomchen.org/bdfparser_py/font#iterglyphs
+        '''
+
         for cp in self.itercps(order, r):
             yield self.glyphbycp(cp)
 
     def glyphbycp(self, codepoint):
+        '''
+        Get a glyph (as Glyph object) by its codepoint.
+
+        https://font.tomchen.org/bdfparser_py/font#glyphbycp
+        '''
+
         if codepoint not in self.glyphs:
             warnings.warn(
                 "Glyph \"" + chr(codepoint) + "\" (codepoint " +
@@ -376,9 +422,21 @@ class Font(object):
         return Glyph(dict(zip(self.__META_TITLES, self.glyphs[codepoint])), self)
 
     def glyph(self, character):
+        '''
+        Get a glyph (as `Glyph` object) by its character.
+
+        https://font.tomchen.org/bdfparser_py/font#glyph
+        '''
+
         return self.glyphbycp(ord(character))
 
     def lacksglyphs(self, string):
+        '''
+        Check if there is any missing glyph and gets these glyphs' character.
+
+        https://font.tomchen.org/bdfparser_py/font#lacksglyphs
+        '''
+
         l = []
         for cp, char in ((ord(char), char) for char in string):
             if cp not in self.glyphs:
@@ -386,7 +444,12 @@ class Font(object):
         return l if len(l) != 0 else None
 
     def drawcps(self, cps, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False, missing=None):
-        # https://font.tomchen.org/bdfparser_py/font#draw
+        '''
+        Draw the glyphs of the specified codepoints, to a `Bitmap` object.
+
+        https://font.tomchen.org/bdfparser_py/font#drawcps
+        '''
+
         dire_shortcut_dict = {
             'lr': 'lrtb',
             'rl': 'rltb',
@@ -513,34 +576,84 @@ class Font(object):
         return Bitmap.concatall(list_of_bitmap_line_lists, direction=dire_line, align=align_line)
 
     def draw(self, string, linelimit=512, mode=1, direction='lrtb', usecurrentglyphspacing=False, missing=None):
+        '''
+        Draw (render) the glyphs of the specified words / setences / paragraphs (as a `str`), to a `Bitmap` object.
+
+        https://font.tomchen.org/bdfparser_py/font#draw
+        '''
+
         return self.drawcps((ord(char) for char in string), linelimit, mode, direction, usecurrentglyphspacing, missing)
 
     def drawall(self, order=1, r=None, linelimit=512, mode=0, direction='lrtb', usecurrentglyphspacing=False):
+        '''
+        Draw all the glyphs in the font (default) or in the specified codepoint range in the font, sorted by the specified order (or by the ascending codepoint order by default), to a `Bitmap` object.
+
+        https://font.tomchen.org/bdfparser_py/font#drawall
+        '''
+
         return self.drawcps(self.itercps(order, r), linelimit, mode, direction, usecurrentglyphspacing)
 
 
 class Glyph(object):
+    '''
+    `Glyph` object
+
+    https://font.tomchen.org/bdfparser_py/glyph
+    '''
 
     def __init__(self, meta_dict, font):
+        '''
+        Initialize a `Glyph` object. Load a `dict` of meta information and the font the glyph belongs.
+
+        https://font.tomchen.org/bdfparser_py/glyph#glyph
+        '''
+
         self.meta = meta_dict
         self.font = font
 
     def __str__(self):
+        '''
+        Gets a human-readable (multi-line) `str` representation of the `Glyph` object.
+
+        https://font.tomchen.org/bdfparser_py/glyph#str-and-print
+        '''
+
         return str(self.draw())
 
     def __repr__(self):
+        '''
+        Gets a programmer-readable `str` representation of the `Glyph` object.
+
+        https://font.tomchen.org/bdfparser_py/glyph#repr
+        '''
+
         return 'Glyph(' + str(self.meta) + ', ' + str(self.font) + ')'
 
     def cp(self):
+        '''
+        Get the codepoint of the glyph.
+
+        https://font.tomchen.org/bdfparser_py/glyph#cp
+        '''
+
         return self.meta['codepoint']
 
     def chr(self):
+        '''
+        Get the character of the glyph.
+
+        https://font.tomchen.org/bdfparser_py/glyph#chr
+        '''
+
         return chr(self.cp())
 
     def draw(self, mode=0, bb=None):
         '''
-        http://localhost:3000/bdfparser_py/font#draw
+        Draw the glyph to a `Bitmap` object.
+
+        https://font.tomchen.org/bdfparser_py/glyph#draw
         '''
+
         if mode == 0:
             retbitmap = self.__draw_fbb()
         elif mode == 1:
@@ -585,7 +698,11 @@ class Glyph(object):
         return self.__draw_user_specified((fh['fbbx'], fh['fbby'], fh['fbbxoff'], fh['fbbyoff']))
 
     def origin(self, mode=0, fromorigin=False, xoff=None, yoff=None):
-        # https://font.tomchen.org/bdfparser_py/glyph#origin
+        '''
+        Get the relative position (displacement) of the origin from the left bottom corner of the bitmap drawn by the method `.draw()`, or vice versa.
+
+        https://font.tomchen.org/bdfparser_py/glyph#origin
+        '''
 
         bbxoff = self.meta.get('bbxoff')
         bbyoff = self.meta.get('bbyoff')
@@ -605,23 +722,64 @@ class Glyph(object):
 
 
 class Bitmap(object):
+    '''
+    `Bitmap` object
+
+    https://font.tomchen.org/bdfparser_py/bitmap
+    '''
 
     def __init__(self, bin_bitmap_list):
+        '''
+        Initialize a `Bitmap` object. Load binary bitmap data (`list` of `str`s).
+
+        https://font.tomchen.org/bdfparser_py/bitmap#bitmap
+        '''
+
         self.bindata = bin_bitmap_list
 
     def __str__(self):
+        '''
+        Gets a human-readable (multi-line) `str` representation of the `Bitmap` object.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#str-and-print
+        '''
+
         return '\n'.join(self.bindata).replace('0', '.').replace('1', '#').replace('2', '&')
 
     def __repr__(self):
+        '''
+        Gets a programmer-readable (multi-line) `str` representation of the `Bitmap` object.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#repr
+        '''
+
         return 'Bitmap([\'' + '\',\n        \''.join(self.bindata) + '\'])'
 
     def width(self):
+        '''
+        Get the width of the bitmap.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#width
+        '''
+
         return len(self.bindata[0])
 
     def height(self):
+        '''
+        Get the height of the bitmap.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#height
+        '''
+
         return len(self.bindata)
 
     def clone(self):
+        '''
+        Get a deep copy / clone of the `Bitmap` object.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#clone
+        '''
+
         bindata = [l[:] for l in self.bindata]  # 2D list deep copy
         return self.__class__(bindata)
 
@@ -691,10 +849,22 @@ class Bitmap(object):
         return retlist
 
     def crop(self, w, h, xoff=0, yoff=0):
+        '''
+        Crop and/or extend the bitmap.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#crop
+        '''
+
         self.bindata = self.__crop_bitmap(self.bindata, w, h, xoff, yoff)
         return self
 
     def overlay(self, bitmap):
+        '''
+        Overlay another bitmap over the current one.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#overlay
+        '''
+
         bindata_a = self.bindata  # no mutation, do not need deep copy
         bindata_b = bitmap.bindata
         if len(bindata_a) != len(bindata_b):
@@ -708,7 +878,11 @@ class Bitmap(object):
 
     @classmethod
     def concatall(cls, bitmaplist, direction=1, align=1, offsetlist=None):
-        # https://font.tomchen.org/bdfparser_py/bitmap#bitmapconcatall
+        '''
+        Concatenate all `Bitmap` objects in a `list`.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#bitmapconcatall
+        '''
 
         if direction > 0:  # horizontal
 
@@ -770,9 +944,21 @@ class Bitmap(object):
         return cls(ret)
 
     def __add__(self, bitmap):
+        '''
+        `+` is a shortcut of `Bitmap.concatall()`. Use `+` to concatenate two `Bitmap` objects and get a new `Bitmap` objects.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#-concat
+        '''
+
         return self.__class__.concatall([self, bitmap])
 
     def concat(self, bitmap, direction=1, align=1, offsetlist=None):
+        '''
+        Concatenate another `Bitmap` objects to the current one.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#concat
+        '''
+
         self.bindata = self.__class__.concatall(
             [self, bitmap], direction, align, offsetlist).bindata
         return self
@@ -788,10 +974,22 @@ class Bitmap(object):
         return bindata_temp
 
     def enlarge(self, x=1, y=1):
+        '''
+        Enlarge a `Bitmap` object, by multiplying every pixel in x (right) direction and in y (top) direction.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#enlarge
+        '''
+
         self.bindata = self.__class__.__enlarge_bindata(self.bindata, x, y)
         return self
 
     def __mul__(self, mul):
+        '''
+        `*` is a shortcut of `.enlarge()`.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#-enlarge
+        '''
+
         if isinstance(mul, int):
             x = y = mul
         else:  # isinstance(mul, tuple)
@@ -799,6 +997,12 @@ class Bitmap(object):
         return self.__class__(self.__class__.__enlarge_bindata(self.bindata, x, y))
 
     def replace(self, substr, newsubstr):
+        '''
+        Replace a string by another in the bitmap.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#replace
+        '''
+
         if isinstance(substr, int):
             substr = str(substr)
         if isinstance(newsubstr, int):
@@ -807,6 +1011,14 @@ class Bitmap(object):
         return self
 
     def shadow(self, xoff=1, yoff=-1):
+        '''
+        Add shadow to the shape in the bitmap.
+
+        The shadow will be filled by `'2'`s.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#shadow
+        '''
+
         bitmap_shadow = self.clone()
         w = self.width()
         h = self.height()
@@ -836,6 +1048,14 @@ class Bitmap(object):
         return self
 
     def glow(self):
+        '''
+        Add glow effect to the shape in the bitmap.
+
+        The glowing area is one pixel up, right, bottom and left to the original pixels, and will be filled by `'2'`s.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#glow
+        '''
+
         w = self.width()
         h = self.height()
         w += 2
@@ -853,7 +1073,13 @@ class Bitmap(object):
         return self
 
     def bytepad(self, bits=8):
-        # https://font.tomchen.org/bdfparser_py/bitmap#bytepad
+        '''
+        Pad each line (row) to multiple of 8 (or other numbers) bits/pixels, with `'0'`s.
+
+        Do this before using the bitmap for a glyph in a BDF font.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#bytepad
+        '''
 
         w = self.width()
         h = self.height()
@@ -863,7 +1089,11 @@ class Bitmap(object):
         return self.crop(w + bits - mod, h)
 
     def todata(self, datatype=1):
-        # https://font.tomchen.org/bdfparser_py/bitmap#todata
+        '''
+        Get the bitmap's data in the specified type and format.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#todata
+        '''
 
         if datatype == 0:
             return '\n'.join(self.bindata)
@@ -881,7 +1111,11 @@ class Bitmap(object):
             return [int(l, 2) for l in self.bindata]
 
     def tobytes(self, mode='RGB', bytesdict=None):
-        # https://font.tomchen.org/bdfparser_py/bitmap#tobytes
+        '''
+        Get the bitmap's data as `bytes` to be used with Pillow library's `Image.frombytes(mode, size, data)`.
+
+        https://font.tomchen.org/bdfparser_py/bitmap#tobytes
+        '''
 
         if mode == '1':
 
