@@ -419,9 +419,9 @@ class Font(object):
                 "Glyph \"" + chr(codepoint) + "\" (codepoint " +
                 str(codepoint) + ") does not exist in the font. Will return `None`"
             )
-            return None
             # Use old style for Python 3.5 support. For 3.6+:
             # f"Glyph \"{chr(codepoint)}\" (codepoint {str(codepoint)}) does not exist in the font"
+            return None
         return Glyph(dict(zip(self.__META_TITLES, self.glyphs[codepoint])), self)
 
     def glyph(self, character):
