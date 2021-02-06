@@ -22,7 +22,7 @@ class TestBitmap(unittest.TestCase):
                                                   '11100000',
                                                   '11000000'])
         self.assertEqual(self.bitmap_qr2.bindata, ['01110',
-                                                   '02110',
+                                                   '02112',
                                                    '01102',
                                                    '10200',
                                                    '01000'])
@@ -57,7 +57,7 @@ class TestBitmapAlter(unittest.TestCase):
                                                                '000000',
                                                                '000000',
                                                                '011100',
-                                                               '021100',
+                                                               '021120',
                                                                '011020',
                                                                '102000',
                                                                '010000'])
@@ -76,7 +76,7 @@ class TestBitmapAlter(unittest.TestCase):
 
     def test_replace(self):
         self.assertEqual(self.bitmap_qr2.replace('2', '3').bindata, ['01110',
-                                                                     '03110',
+                                                                     '03113',
                                                                      '01103',
                                                                      '10300',
                                                                      '01000'])
@@ -97,7 +97,7 @@ class TestBitmapOverlay(unittest.TestCase):
                                      self.bitmap_qr.height())
             ).bindata, ['01110000',
                         '01110000',
-                        '02110000',
+                        '02112000',
                         '01102000',
                         '11200000',
                         '11000000'])
@@ -137,7 +137,7 @@ class TestBitmapConcat(unittest.TestCase):
                                                                         '00000000000111000000000000000',
                                                                         '01110000000111000000000000000',
                                                                         '01110000000111000000000001110',
-                                                                        '01110000001011000000000002110',
+                                                                        '01110000001011000000000002112',
                                                                         '01100000011110000000000001102',
                                                                         '11100000111100000000000010200',
                                                                         '11000000111000000000000001000'])
@@ -162,7 +162,7 @@ class TestBitmapConcat(unittest.TestCase):
                                                                                                                           '0000001110000000000000000000',
                                                                                                                           '0111001110000000000000000000',
                                                                                                                           '0111001110000000000000001110',
-                                                                                                                          '0111010110000000000000002110',
+                                                                                                                          '0111010110000000000000002112',
                                                                                                                           '0110111100000000000000001102',
                                                                                                                           '1111111000000000000000010200',
                                                                                                                           '1101110000000000000000001000'])
@@ -186,7 +186,7 @@ class TestBitmapConcat(unittest.TestCase):
                                                                                                                    '00000000111000000000000000000',
                                                                                                                    '00000000111000000000001110000',
                                                                                                                    '01110000111000000000001110000',
-                                                                                                                   '02110001011000000000001110000',
+                                                                                                                   '02112001011000000000001110000',
                                                                                                                    '01102011110000000000001100000',
                                                                                                                    '10200111100000000000011100000',
                                                                                                                    '01000111000000000000011000000'])
@@ -221,14 +221,14 @@ class TestBitmapConcat(unittest.TestCase):
                                                                                                                    '1111000000000000',
                                                                                                                    '1110000000000000',
                                                                                                                    '0111000000000000',
-                                                                                                                   '0211000000000000',
+                                                                                                                   '0211200000000000',
                                                                                                                    '0110200000000000',
                                                                                                                    '1020000000000000',
                                                                                                                    '0100000000000000'])
 
     def test_concatall_direction_m1(self):
         self.assertEqual(Bitmap.concatall([self.bitmap_qr, self.bitmap_j, self.bitmap_qr2], direction=-1).bindata, ['0111000000000000',
-                                                                                                                    '0211000000000000',
+                                                                                                                    '0211200000000000',
                                                                                                                     '0110200000000000',
                                                                                                                     '1020000000000000',
                                                                                                                     '0100000000000000',
@@ -263,7 +263,7 @@ class TestBitmapConcat(unittest.TestCase):
 
     def test_concatall_align_0(self):
         self.assertEqual(Bitmap.concatall([self.bitmap_qr, self.bitmap_j, self.bitmap_qr2], align=0).bindata, ['01110000000000111000000001110',
-                                                                                                               '01110000000000111000000002110',
+                                                                                                               '01110000000000111000000002112',
                                                                                                                '01110000000000111000000001102',
                                                                                                                '01100000000000111000000010200',
                                                                                                                '11100000000000000000000001000',
@@ -287,7 +287,7 @@ class TestBitmapConcat(unittest.TestCase):
 
     def test_concatall_direction_2_align_0(self):
         self.assertEqual(Bitmap.concatall([self.bitmap_qr, self.bitmap_j, self.bitmap_qr2], direction=2, align=0).bindata, ['01110000000111000000001110000',
-                                                                                                                            '02110000000111000000001110000',
+                                                                                                                            '02112000000111000000001110000',
                                                                                                                             '01102000000111000000001110000',
                                                                                                                             '10200000000111000000001100000',
                                                                                                                             '01000000000000000000011100000',
@@ -339,14 +339,14 @@ class TestBitmapConcat(unittest.TestCase):
                                                                                                                             '1111000000000000',
                                                                                                                             '1110000000000000',
                                                                                                                             '0000000000001110',
-                                                                                                                            '0000000000002110',
+                                                                                                                            '0000000000002112',
                                                                                                                             '0000000000001102',
                                                                                                                             '0000000000010200',
                                                                                                                             '0000000000001000'])
 
     def test_concatall_direction_m1_align_0(self):
         self.assertEqual(Bitmap.concatall([self.bitmap_qr, self.bitmap_j, self.bitmap_qr2], direction=-1, align=0).bindata, ['0000000000001110',
-                                                                                                                             '0000000000002110',
+                                                                                                                             '0000000000002112',
                                                                                                                              '0000000000001102',
                                                                                                                              '0000000000010200',
                                                                                                                              '0000000000001000',
@@ -445,9 +445,9 @@ class TestBitmapEnlarge(unittest.TestCase):
         self.assertEqual(self.bitmap_qr2.enlarge(2, 3).bindata, ['0011111100',
                                                                  '0011111100',
                                                                  '0011111100',
-                                                                 '0022111100',
-                                                                 '0022111100',
-                                                                 '0022111100',
+                                                                 '0022111122',
+                                                                 '0022111122',
+                                                                 '0022111122',
                                                                  '0011110022',
                                                                  '0011110022',
                                                                  '0011110022',
@@ -487,7 +487,7 @@ class TestBitmapEffect(unittest.TestCase):
                                                                 '0022200000',
                                                                 '0022000000'])
 
-    def test_glow(self):
+    def test_glow0(self):
         self.assertEqual(self.bitmap_qr.glow().bindata, ['0022200000',
                                                          '0211120000',
                                                          '0211120000',
@@ -496,6 +496,16 @@ class TestBitmapEffect(unittest.TestCase):
                                                          '2111200000',
                                                          '2112000000',
                                                          '0220000000'])
+
+    def test_glow1(self):
+        self.assertEqual(self.bitmap_qr.glow(1).bindata, ['0222220000',
+                                                          '0211120000',
+                                                          '0211120000',
+                                                          '0211120000',
+                                                          '2211220000',
+                                                          '2111200000',
+                                                          '2112200000',
+                                                          '2222000000'])
 
 
 class TestBitmapPad(unittest.TestCase):
@@ -507,14 +517,14 @@ class TestBitmapPad(unittest.TestCase):
 
     def test_bytepad(self):
         self.assertEqual(self.bitmap_qr2.bytepad().bindata, ['01110000',
-                                                             '02110000',
+                                                             '02112000',
                                                              '01102000',
                                                              '10200000',
                                                              '01000000'])
 
     def test_bytepad4(self):
         self.assertEqual(self.bitmap_qr3.bytepad(4).bindata, ['011100000000',
-                                                              '021100000000',
+                                                              '021120000000',
                                                               '011020003000',
                                                               '102000002100',
                                                               '010000000000'])
@@ -579,21 +589,21 @@ class TestBitmapTobytes(unittest.TestCase):
         self.assertEqual(self.bitmap_qr.tobytes(
             mode='1'), b'\x8f\x8f\x8f\x9f\x1f?')
         self.assertEqual(self.bitmap_qr2.tobytes(
-            mode='1'), b'\x8f\x8f\x97_\xbf')
+            mode='1'), b'\x8f\x87\x97_\xbf')
 
     def test_tobytes_L(self):
         self.assertEqual(self.bitmap_qr.tobytes(
             mode='L'), b'\xff\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\x00\x00\xff\xff\xff\xff\xff\xff')
         self.assertEqual(self.bitmap_qr2.tobytes(
-            mode='L'), b'\xff\x00\x00\x00\xff\xff\x7f\x00\x00\xff\xff\x00\x00\xff\x7f\x00\xff\x7f\xff\xff\xff\x00\xff\xff\xff')
+            mode='L'), b'\xff\x00\x00\x00\xff\xff\x7f\x00\x00\x7f\xff\x00\x00\xff\x7f\x00\xff\x7f\xff\xff\xff\x00\xff\xff\xff')
 
     def test_tobytes_RGB_default(self):
         self.assertEqual(self.bitmap_qr.tobytes(), b'\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff')
-        self.assertEqual(self.bitmap_qr2.tobytes(), b'\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\x00\x00\x00\x00\x00\xff\xff\xff\xff\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff')
+        self.assertEqual(self.bitmap_qr2.tobytes(), b'\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\x00\x00\x00\x00\x00\xff\x00\x00\xff\xff\xff\x00\x00\x00\x00\x00\x00\xff\xff\xff\xff\x00\x00\x00\x00\x00\xff\xff\xff\xff\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x00\x00\xff\xff\xff\xff\xff\xff\xff\xff\xff')
 
     def test_tobytes_RGBA(self):
         self.assertEqual(self.bitmap_qr.tobytes('RGBA'), b'\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00')
-        self.assertEqual(self.bitmap_qr2.tobytes('RGBA'), b'\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\x00\x00\xff\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00')
+        self.assertEqual(self.bitmap_qr2.tobytes('RGBA'), b'\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\x00\x00\xff\x00\x00\x00\xff\x00\x00\x00\xff\xff\x00\x00\xff\xff\xff\xff\x00\x00\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\x00\x00\xff\x00\x00\x00\xff\xff\xff\xff\x00\xff\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00\x00\x00\x00\xff\xff\xff\xff\x00\xff\xff\xff\x00\xff\xff\xff\x00')
 
 
 class TestBitmapStrRepr(unittest.TestCase):

@@ -63,7 +63,7 @@ specfont_path = 'tests/fonts/spec_example_fixed.bdf'
 
 bitmap_qr2_bindata = [
     '01110',
-    '02110',
+    '02112',
     '01102',
     '10200',
     '01000'
@@ -71,7 +71,7 @@ bitmap_qr2_bindata = [
 
 bitmap_qr3_bindata = [
     '0111000000',
-    '0211000000',
+    '0211200000',
     '0110200030',
     '1020000021',
     '0100000000'

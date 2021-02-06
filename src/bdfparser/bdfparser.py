@@ -149,7 +149,7 @@ class Font(object):
                     comment = 'comment'
                     if comment not in self.headers:
                         self.headers[comment] = []
-                    self.headers[comment].append(value)
+                    self.headers[comment].append(value.strip(' "\'\t\r\n'))
                 elif key == 'SWIDTH':
                     nlist = value.split()
                     self.headers['swx0'] = int(nlist[0])
@@ -213,7 +213,7 @@ class Font(object):
                     comment = 'comment'
                     if comment not in self.props:
                         self.props[comment] = []
-                    self.props[comment].append(value)
+                    self.props[comment].append(value.strip(' "\'\t\r\n'))
                 else:
                     self.props[key.lower()] = value
             elif l == 1:
@@ -420,7 +420,7 @@ class Font(object):
                 str(codepoint) + ") does not exist in the font. Will return `None`"
             )
             # Use old style for Python 3.5 support. For 3.6+:
-            # f"Glyph \"{chr(codepoint)}\" (codepoint {str(codepoint)}) does not exist in the font"
+            # f"Glyph \"{chr(codepoint)}\" (codepoint {str(codepoint)}) does not exist in the font. Will return `None`"
             return None
         return Glyph(dict(zip(self.__META_TITLES, self.glyphs[codepoint])), self)
 
@@ -955,7 +955,7 @@ class Bitmap(object):
 
         return self.__class__.concatall([self, bitmap])
 
-    def concat(self, bitmap, direction=1, align=1, offsetlist=None):
+    def concat(self, bitmap, direction=1, align=1, offset=0):
         '''
         Concatenate another `Bitmap` objects to the current one.
 
@@ -963,7 +963,7 @@ class Bitmap(object):
         '''
 
         self.bindata = self.__class__.concatall(
-            [self, bitmap], direction, align, offsetlist).bindata
+            [self, bitmap], direction, align, [offset]).bindata
         return self
 
     @classmethod
@@ -1050,11 +1050,11 @@ class Bitmap(object):
         self.bindata = bitmap_shadow.bindata
         return self
 
-    def glow(self):
+    def glow(self, mode=0):
         '''
         Add glow effect to the shape in the bitmap.
 
-        The glowing area is one pixel up, right, bottom and left to the original pixels, and will be filled by `'2'`s.
+        The glowing area is one pixel up, right, bottom and left to the original pixels (corners will not be filled in default mode 0 but will in mode 1), and will be filled by `'2'`s.
 
         https://font.tomchen.org/bdfparser_py/bitmap#glow
         '''
@@ -1072,6 +1072,15 @@ class Bitmap(object):
                     b[i_line][i_pixel + 1] = (b[i_line][i_pixel + 1] or 2)
                     b[i_line - 1][i_pixel] = (b[i_line - 1][i_pixel] or 2)
                     b[i_line + 1][i_pixel] = (b[i_line + 1][i_pixel] or 2)
+                    if mode == 1:
+                        b[i_line - 1][i_pixel -
+                                      1] = (b[i_line - 1][i_pixel - 1] or 2)
+                        b[i_line - 1][i_pixel +
+                                      1] = (b[i_line - 1][i_pixel + 1] or 2)
+                        b[i_line + 1][i_pixel -
+                                      1] = (b[i_line + 1][i_pixel - 1] or 2)
+                        b[i_line + 1][i_pixel +
+                                      1] = (b[i_line + 1][i_pixel + 1] or 2)
         self.bindata = [''.join(str(p) for p in l) for l in b]
         return self
 
