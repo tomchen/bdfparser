@@ -5,6 +5,7 @@
 
 import re
 import io
+import pathlib
 import warnings
 from sys import version_info as python_version
 
@@ -88,7 +89,7 @@ class Font(object):
         l = len(argv)
         if l == 1:
             arg = argv[0]
-            if isinstance(arg, str):
+            if isinstance(arg, str) or isinstance(arg, pathlib.Path):
                 self.load_file_path(arg)
             elif isinstance(arg, io.IOBase):
                 self.load_file_obj(arg)
