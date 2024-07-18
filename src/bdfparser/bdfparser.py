@@ -230,7 +230,9 @@ class Font(object):
     def __parse_glyph_count(self):
 
         if self.__curline_chars is None:
-            line = next(self.__f)
+            line = next(self.__f).strip()
+            while len(line) == 0:
+                line = next(self.__f).strip()
         else:
             line = self.__curline_chars
             self.__curline_chars = None
