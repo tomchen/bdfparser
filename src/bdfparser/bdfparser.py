@@ -120,7 +120,9 @@ class Font(object):
 
         while 1:
 
-            line = next(self.__f)
+            line = next(self.__f).strip()
+            while len(line) == 0:
+                line = next(self.__f).strip()
             kvlist = line.split(None, 1)
             l = len(kvlist)
 
@@ -203,7 +205,9 @@ class Font(object):
 
         while 1:
 
-            line = next(self.__f)
+            line = next(self.__f).strip()
+            while len(line) == 0:
+                line = next(self.__f).strip()
             kvlist = line.split(None, 1)
             l = len(kvlist)
 
