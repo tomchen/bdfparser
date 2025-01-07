@@ -16,8 +16,7 @@ jobs:
     strategy:
       matrix:
         os:
-          - ubuntu-latest
-          - macos-latest
+          - ubuntu-20.04
           - windows-latest
         python: ["3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
 
@@ -34,6 +33,6 @@ jobs:
         run: tox -e py
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
-        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.13'
+        if: matrix.os == 'ubuntu-20.04' && matrix.python == '3.13'
         with:
           file: ./coverage.xml
