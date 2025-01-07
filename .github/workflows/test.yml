@@ -21,20 +21,22 @@ jobs:
         python: ["3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
         env:
           PIP_TRUSTED_HOST: "pypi.python.org pypi.org files.pythonhosted.org"
-      - name: Install Tox and any other packages
-        run: pip install tox
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
       - name: Run Tox
         # Run tox using the version of Python in `PATH`
         run: tox -e py
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        if: matrix.os == 'ubuntu-20.04' && matrix.python == '3.13'
+        uses: codecov/codecov-action@v5
+        if: github.event_name == 'push' && matrix.os == 'ubuntu-20.04' && matrix.python == '3.13'
         with:
           file: ./coverage.xml
