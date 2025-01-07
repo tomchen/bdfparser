@@ -4,6 +4,7 @@ import re
 import io
 import pathlib
 import warnings
+from sys import version_info as python_version
 
 def format_warning(message, category, filename, lineno, file=None, line=None):
     return '%s:%s\n%s: %s\n' % (filename, lineno, 'bdfparser warning', message)
