@@ -175,7 +175,7 @@ class Font(object):
                 elif key == 'CHARS':
                     warnings.warn(
                         "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword",
-                        BDFParserWarning)
+                        BDFParserWarning, stacklevel=2)
                     self.__parse_headers_after()
                     self.__curline_chars = line
                     self.__parse_glyph_count()
@@ -183,8 +183,8 @@ class Font(object):
                 elif key == 'STARTCHAR':
                     warnings.warn(
                         "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword",
-                        BDFParserWarning)
-                    warnings.warn("Cannot find 'CHARS' line", BDFParserWarning)
+                        BDFParserWarning, stacklevel=2)
+                    warnings.warn("Cannot find 'CHARS' line", BDFParserWarning, stacklevel=2)
                     self.__parse_headers_after()
                     self.__curline_startchar = line
                     self.__prepare_glyphs()
@@ -193,8 +193,8 @@ class Font(object):
             if l == 1 and kvlist[0].strip() == 'ENDFONT':
                 warnings.warn(
                     "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword",
-                    BDFParserWarning)
-                warnings.warn("This font does not have any glyphs", BDFParserWarning)
+                    BDFParserWarning, stacklevel=2)
+                warnings.warn("This font does not have any glyphs", BDFParserWarning, stacklevel=2)
                 return
 
     def __parse_headers_after(self):
@@ -225,7 +225,7 @@ class Font(object):
                     self.__parse_glyph_count()
                     return
                 if key == 'ENDFONT':
-                    warnings.warn("This font does not have any glyphs", BDFParserWarning)
+                    warnings.warn("This font does not have any glyphs", BDFParserWarning, stacklevel=2)
                     return
                 else:
                     self.props[key] = None
@@ -241,7 +241,7 @@ class Font(object):
             self.__curline_chars = None
 
         if line.strip() == 'ENDFONT':
-            warnings.warn("This font does not have any glyphs", BDFParserWarning)
+            warnings.warn("This font does not have any glyphs", BDFParserWarning, stacklevel=2)
             return
 
         kvlist = line.split(None, 1)
@@ -251,7 +251,7 @@ class Font(object):
             self.__curline_startchar = line
             warnings.warn(
                 "Cannot find 'CHARS' line next to 'ENDPROPERTIES' line",
-                BDFParserWarning)
+                BDFParserWarning, stacklevel=2)
         self.__prepare_glyphs()
 
     def __prepare_glyphs(self):
@@ -270,7 +270,7 @@ class Font(object):
                 self.__curline_startchar = None
 
             if line is None:
-                warnings.warn("This font does not have 'ENDFONT' keyword", BDFParserWarning)
+                warnings.warn("This font does not have 'ENDFONT' keyword", BDFParserWarning, stacklevel=2)
                 self.__prepare_glyphs_after()
                 return
 
@@ -346,13 +346,13 @@ class Font(object):
             if self.__glyph_count_to_check is None:
                 warnings.warn(
                     "The glyph count next to 'CHARS' keyword does not exist",
-                    BDFParserWarning)
+                    BDFParserWarning, stacklevel=2)
             else:
                 warnings.warn(
                     "The glyph count next to 'CHARS' keyword is " +
                     str(self.__glyph_count_to_check) +
                     ", which does not match the actual glyph count " + str(l),
-                    BDFParserWarning
+                    BDFParserWarning, stacklevel=2
                 )
                 # Use old style for Python 3.5 support. For 3.6+:
                 # f"The glyph count next to 'CHARS' keyword is {str(self.__glyph_count_to_check)}, which does not match the actual glyph count {str(l)}"
@@ -426,7 +426,7 @@ class Font(object):
             warnings.warn(
                 "Glyph \"" + chr(codepoint) + "\" (codepoint " +
                 str(codepoint) + ") does not exist in the font. Will return `None`",
-                BDFParserWarning
+                BDFParserWarning, stacklevel=2
             )
             # Use old style for Python 3.5 support. For 3.6+:
             # f"Glyph \"{chr(codepoint)}\" (codepoint {str(codepoint)}) does not exist in the font. Will return `None`"
@@ -880,9 +880,9 @@ class Bitmap(object):
         bindata_a = self.bindata  # no mutation, do not need deep copy
         bindata_b = bitmap.bindata
         if len(bindata_a) != len(bindata_b):
-            warnings.warn("the bitmaps to overlay have different height", BDFParserWarning)
+            warnings.warn("the bitmaps to overlay have different height", BDFParserWarning, stacklevel=2)
         if len(bindata_a[0]) != len(bindata_b[0]):
-            warnings.warn("the bitmaps to overlay have different width", BDFParserWarning)
+            warnings.warn("the bitmaps to overlay have different width", BDFParserWarning, stacklevel=2)
         # b over a
         self.bindata = [''.join(str(int(b) or int(a)) for a, b in zip(
             la, lb)) for la, lb in zip(bindata_a, bindata_b)]
@@ -1184,7 +1184,7 @@ class Bitmap(object):
                 }
             else:
                 if mode != 'RGB':
-                    warnings.warn("Unknown mode, fallback to RGB", BDFParserWarning)
+                    warnings.warn("Unknown mode, fallback to RGB", BDFParserWarning, stacklevel=2)
                 bytesdict = bytesdict or {
                     0: b'\xff\xff\xff',
                     1: b'\x00\x00\x00',
