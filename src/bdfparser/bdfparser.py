@@ -10,11 +10,10 @@ import warnings
 from sys import version_info as python_version
 
 
-def format_warning(message, category, filename, lineno, file=None, line=None):
-    return '%s:%s\n%s: %s\n' % (filename, lineno, 'bdfparser warning', message)
-
-
-warnings.formatwarning = format_warning
+class BDFParserWarning(UserWarning):
+    '''Warning category for bdfparser. Users can filter or format these
+    independently of other warnings via the standard `warnings` machinery.'''
+    pass
 
 
 class Font(object):
@@ -175,15 +174,17 @@ class Font(object):
                     self.headers[key.lower()] = int(value)
                 elif key == 'CHARS':
                     warnings.warn(
-                        "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword")
+                        "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword",
+                        BDFParserWarning)
                     self.__parse_headers_after()
                     self.__curline_chars = line
                     self.__parse_glyph_count()
                     return
                 elif key == 'STARTCHAR':
                     warnings.warn(
-                        "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword")
-                    warnings.warn("Cannot find 'CHARS' line")
+                        "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword",
+                        BDFParserWarning)
+                    warnings.warn("Cannot find 'CHARS' line", BDFParserWarning)
                     self.__parse_headers_after()
                     self.__curline_startchar = line
                     self.__prepare_glyphs()
@@ -191,8 +192,9 @@ class Font(object):
 
             if l == 1 and kvlist[0].strip() == 'ENDFONT':
                 warnings.warn(
-                    "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword")
-                warnings.warn("This font does not have any glyphs")
+                    "It looks like the font does not have property block beginning with 'STARTPROPERTIES' keyword",
+                    BDFParserWarning)
+                warnings.warn("This font does not have any glyphs", BDFParserWarning)
                 return
 
     def __parse_headers_after(self):
@@ -223,7 +225,7 @@ class Font(object):
                     self.__parse_glyph_count()
                     return
                 if key == 'ENDFONT':
-                    warnings.warn("This font does not have any glyphs")
+                    warnings.warn("This font does not have any glyphs", BDFParserWarning)
                     return
                 else:
                     self.props[key] = None
@@ -239,7 +241,7 @@ class Font(object):
             self.__curline_chars = None
 
         if line.strip() == 'ENDFONT':
-            warnings.warn("This font does not have any glyphs")
+            warnings.warn("This font does not have any glyphs", BDFParserWarning)
             return
 
         kvlist = line.split(None, 1)
@@ -248,7 +250,8 @@ class Font(object):
         else:
             self.__curline_startchar = line
             warnings.warn(
-                "Cannot find 'CHARS' line next to 'ENDPROPERTIES' line")
+                "Cannot find 'CHARS' line next to 'ENDPROPERTIES' line",
+                BDFParserWarning)
         self.__prepare_glyphs()
 
     def __prepare_glyphs(self):
@@ -267,7 +270,7 @@ class Font(object):
                 self.__curline_startchar = None
 
             if line is None:
-                warnings.warn("This font does not have 'ENDFONT' keyword")
+                warnings.warn("This font does not have 'ENDFONT' keyword", BDFParserWarning)
                 self.__prepare_glyphs_after()
                 return
 
@@ -342,12 +345,14 @@ class Font(object):
         if self.__glyph_count_to_check != l:
             if self.__glyph_count_to_check is None:
                 warnings.warn(
-                    "The glyph count next to 'CHARS' keyword does not exist")
+                    "The glyph count next to 'CHARS' keyword does not exist",
+                    BDFParserWarning)
             else:
                 warnings.warn(
                     "The glyph count next to 'CHARS' keyword is " +
                     str(self.__glyph_count_to_check) +
-                    ", which does not match the actual glyph count " + str(l)
+                    ", which does not match the actual glyph count " + str(l),
+                    BDFParserWarning
                 )
                 # Use old style for Python 3.5 support. For 3.6+:
                 # f"The glyph count next to 'CHARS' keyword is {str(self.__glyph_count_to_check)}, which does not match the actual glyph count {str(l)}"
@@ -420,7 +425,8 @@ class Font(object):
         if codepoint not in self.glyphs:
             warnings.warn(
                 "Glyph \"" + chr(codepoint) + "\" (codepoint " +
-                str(codepoint) + ") does not exist in the font. Will return `None`"
+                str(codepoint) + ") does not exist in the font. Will return `None`",
+                BDFParserWarning
             )
             # Use old style for Python 3.5 support. For 3.6+:
             # f"Glyph \"{chr(codepoint)}\" (codepoint {str(codepoint)}) does not exist in the font. Will return `None`"
@@ -874,9 +880,9 @@ class Bitmap(object):
         bindata_a = self.bindata  # no mutation, do not need deep copy
         bindata_b = bitmap.bindata
         if len(bindata_a) != len(bindata_b):
-            warnings.warn("the bitmaps to overlay have different height")
+            warnings.warn("the bitmaps to overlay have different height", BDFParserWarning)
         if len(bindata_a[0]) != len(bindata_b[0]):
-            warnings.warn("the bitmaps to overlay have different width")
+            warnings.warn("the bitmaps to overlay have different width", BDFParserWarning)
         # b over a
         self.bindata = [''.join(str(int(b) or int(a)) for a, b in zip(
             la, lb)) for la, lb in zip(bindata_a, bindata_b)]
@@ -1178,7 +1184,7 @@ class Bitmap(object):
                 }
             else:
                 if mode != 'RGB':
-                    warnings.warn("Unknown mode, fallback to RGB")
+                    warnings.warn("Unknown mode, fallback to RGB", BDFParserWarning)
                 bytesdict = bytesdict or {
                     0: b'\xff\xff\xff',
                     1: b'\x00\x00\x00',
