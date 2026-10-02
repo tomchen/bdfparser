@@ -5,36 +5,50 @@ on:
     branches:
       - main
       - master
+      - 'v*'
   pull_request:
     branches:
       - main
       - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.14'
+      - name: Ruff (lint)
+        run: uv run ruff check src tests
+      - name: Ruff (format)
+        run: uv run ruff format --check src tests
+
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os:
-          - ubuntu-20.04
-          - windows-latest
-        python: ["3.5", "3.6", "3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.10', '3.11', '3.12', '3.13', '3.14']
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - name: Install bdftopcf (reference PCF writer)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y xfonts-utils
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python }}
-        env:
-          PIP_TRUSTED_HOST: "pypi.python.org pypi.org files.pythonhosted.org"
-      - name: Install Tox and any other packages
-        run: pip install tox
-      - name: Run Tox
-        # Run tox using the version of Python in `PATH`
-        run: tox -e py
+          enable-cache: true
+      - name: Run tests
+        run: uv run pytest --cov=bdfparser --cov-report=xml --cov-report=term
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
-        if: github.event_name == 'push' && matrix.os == 'ubuntu-20.04' && matrix.python == '3.13'
+        if: github.event_name == 'push' && matrix.os == 'ubuntu-latest' && matrix.python == '3.14'
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
