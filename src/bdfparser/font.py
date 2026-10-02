@@ -214,7 +214,7 @@ class Font(object):
                         self.props[comment] = []
                     self.props[comment].append(value.strip(' "\'\t\r\n'))
                 else:
-                    self.props[key.lower()] = value
+                    self.props[key.lower()] = value.replace('""', '"')
             elif l == 1:
                 key = kvlist[0].strip()
                 if key == 'ENDPROPERTIES':
