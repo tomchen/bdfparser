@@ -10,6 +10,7 @@ import argparse
 import sys
 import warnings
 from collections.abc import Sequence
+from typing import Any
 
 from . import __version__
 from .errors import BDFParserWarning
@@ -45,6 +46,15 @@ def _propvalue(v: object) -> str:
     return '"' + str(v).replace('"', '""') + '"'
 
 
+def _print(text: str, out: Any) -> None:
+    try:
+        print(text, file=out)
+    except UnicodeEncodeError:
+        # a stream that could not be made tolerant (see `_tolerant`)
+        enc = getattr(out, 'encoding', None) or 'ascii'
+        print(text.encode(enc, 'replace').decode(enc), file=out)
+
+
 def _cmd_convert(args: argparse.Namespace) -> int:
     fmt = _output_format(args.output)
     font = _load(args.input, args.pixelsize)
@@ -65,20 +75,20 @@ def _cmd_convert(args: argparse.Namespace) -> int:
 def _cmd_info(args: argparse.Namespace, out) -> int:
     font = _load(args.input, args.pixelsize)
     h = font.headers
-    print(f'fontname: {h.get("fontname", "")}', file=out)
-    print(f'glyphs: {len(font.glyphs)} (+ {len(font.unencoded)} unencoded)', file=out)
-    print(f'bbox: {h.get("fbbx")} {h.get("fbby")} {h.get("fbbxoff")} {h.get("fbbyoff")}', file=out)
-    print(f'charset: {font.charset}', file=out)
-    print('properties:', file=out)
+    _print(f'fontname: {h.get("fontname", "")}', out)
+    _print(f'glyphs: {len(font.glyphs)} (+ {len(font.unencoded)} unencoded)', out)
+    _print(f'bbox: {h.get("fbbx")} {h.get("fbby")} {h.get("fbbxoff")} {h.get("fbbyoff")}', out)
+    _print(f'charset: {font.charset}', out)
+    _print('properties:', out)
     for k, v in font.props.items():
         name = 'COMMENT' if k == 'comment' else font._propnames.get(k, k.upper())
-        print(f'  {name} {_propvalue(v)}'.rstrip(), file=out)
+        _print(f'  {name} {_propvalue(v)}'.rstrip(), out)
     return 0
 
 
 def _cmd_preview(args: argparse.Namespace, out) -> int:
     font = _load(args.input, args.pixelsize)
-    print(str(font.draw(args.text)), file=out)
+    _print(str(font.draw(args.text)), out)
     return 0
 
 
@@ -123,6 +133,21 @@ def _parser() -> argparse.ArgumentParser:
     return p
 
 
+def _tolerant(stream: Any) -> None:
+    """
+    Make a text stream replace characters its encoding cannot represent (e.g.
+    CJK property values on a Windows console with a legacy code page) instead
+    of raising `UnicodeEncodeError`.
+    """
+
+    reconfigure = getattr(stream, 'reconfigure', None)
+    if callable(reconfigure) and getattr(stream, 'errors', None) == 'strict':
+        try:
+            reconfigure(errors='replace')
+        except (ValueError, OSError):  # pragma: no cover - e.g. stream already used
+            pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """
     Entry point of the `bdfparser` console script. Returns the exit status.
@@ -132,6 +157,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     args = _parser().parse_args(argv)
     out = sys.stdout
+    _tolerant(out)
+    _tolerant(sys.stderr)
     with warnings.catch_warnings():
         if args.quiet:
             warnings.simplefilter('ignore', BDFParserWarning)
@@ -142,5 +169,5 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return _cmd_info(args, out)
             return _cmd_preview(args, out)
         except (OSError, ValueError) as e:
-            print(f'bdfparser: error: {e}', file=sys.stderr)
+            _print(f'bdfparser: error: {e}', sys.stderr)
             return 1

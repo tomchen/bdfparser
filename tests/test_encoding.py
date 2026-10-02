@@ -405,8 +405,10 @@ class TestUtils:
         assert cp2char(0x8140, 'gbk') == '丂'
 
     def test_code_decoding_to_several_characters(self):
-        # Big5-HKSCS 0x8862 is one code for two Unicode characters
-        assert cp2char(0x8862, 'big5hkscs') == '\u00ca\u0304'
+        # Big5-HKSCS 0x8862 is one code for two Unicode characters (Ê + U+0304):
+        # not a single character, so not representable (SPEC-v3 §11.1)
+        assert cp2char(0x8862, 'big5hkscs') is None
+        assert cp2char(0x8863, 'big5hkscs') == '\u1ebe'
 
     def test_gb18030_four_bytes(self):
         assert char2cp('😀', 'gb18030') == 0x9439FC36

@@ -609,7 +609,17 @@ class _Out:
 
 def _check16(name: str, v: int) -> None:
     if not MINSHORT <= v <= MAXSHORT:
-        raise PCFError(f'glyph {name!r}: metric value {v} does not fit in 16 bits')
+        raise PCFError(f'Glyph "{name}": metric value {v} does not fit in 16 bits')
+
+
+# integer property values are written as 32-bit words (signed or unsigned)
+_PROP_MIN = -(2**31)
+_PROP_MAX = 2**32 - 1
+
+
+def _check_prop(name: str, v: int) -> None:
+    if not _PROP_MIN <= v <= _PROP_MAX:
+        raise PCFError(f'PCF: property {name} value {v} does not fit in 32 bits')
 
 
 def _as_int(v: Any) -> int | None:
@@ -712,6 +722,8 @@ def write_pcf(
             continue
         iv = _as_int(value)
         is_string = iv is None
+        if iv is not None:
+            _check_prop(name, iv)
         if name in ('FONT_ASCENT', 'FONT_DESCENT', 'DEFAULT_CHAR'):
             if not is_string:
                 if name == 'FONT_ASCENT':
@@ -777,6 +789,20 @@ def write_pcf(
     if 'QUAD_WIDTH' not in special:
         add('QUAD_WIDTH', False, -1)
 
+    # range guards before any bitmap is built (SPEC-v3 §11.2): generated property
+    # values must fit their 32-bit words; the font ascent / descent (16-bit in
+    # the X font info and in the metrics of a terminal font's character cell)
+    # and the cell height must fit 16 bits
+    for pname, is_string, pvalue in plist:
+        if not is_string:
+            _check_prop(pname.decode('utf-8', 'replace'), pvalue)
+    for v in (font_ascent, font_descent, font_ascent + font_descent):
+        if not MINSHORT <= v <= MAXSHORT:
+            raise PCFError(
+                f'PCF: FONT_ASCENT {font_ascent} / FONT_DESCENT {font_descent} '
+                'do not fit in 16 bits'
+            )
+
     # ---- glyphs (bdfReadCharacters) ----
     glyphs: list[_Glyph] = []
     encoding: dict[int, int] = {}
@@ -796,7 +822,7 @@ def write_pcf(
         bb = meta[5] or 0
         label = name.decode('utf-8', 'replace')
         if bw < 0 or bh < 0:
-            raise PCFError(f'glyph {label!r} has a negative sized bitmap, {bw}x{bh}')
+            raise PCFError(f'Glyph "{label}" has a negative sized bitmap, {bw}x{bh}')
         wx = meta[8]
         if wx is None:
             wx = hdwx if isinstance(hdwx, int) else max(0, bl + bw)

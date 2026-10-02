@@ -35,6 +35,20 @@ bdfparser 3 turns the BDF parser into a parser, editor and converter for BDF, PC
 - Modules `bdfparser.pcf` (`read_pcf`, `write_pcf`), `bdfparser.ttf` (`read_ttf`, `write_ttf`), `bdfparser.outline` (`bitmap_contours`, `rasterize`).
 - **Command line**: `bdfparser convert | info | preview` (also `python -m bdfparser`).
 
+### Hardening (SPEC-v3 §11, cross-language parity with bdfparser-js)
+
+- **Charsets are table-exact**: one canonical charset table (`bdfparser.encoding.charset_table()`, `charset_map()`, `codec_name()`, `gb18030_ranges()`; Python's codecs are the reference for bdfparser-js's generated tables). New charsets `cp437`, `cp850`, `cp852`, `cp866`, `cp874`, `cp932`, `cp936`, `cp949`, `cp950`, `johab` (also via `IBM-CP437`, `windows-874`, `MS932`, ...); `ISO8859-01` canonicalises to `iso88591`; `KOI8-RU`, `HZ` and other unknown names map as Unicode with one warning (also for the module-level `char2cp()` / `cp2char()`).
+- `char2cp()` returns a code only if it converts back to the same character and has an allowed byte length (1 for single-byte, 1–2 for double-byte charsets, 1, 2 or 4 for GB18030): no more 3-byte JIS X 0212 or 8-byte KS X 1001 sequences, `'¥'` is not `0x5C` in Shift_JIS. `cp2char()` returns a single code point only (Big5-HKSCS 0x8862 → `None`); GL-form codes must have both bytes in 0x21–0x7E.
+- The charset resolution (incl. the GL-form scan over all glyphs) is cached per font and invalidated when `CHARSET_REGISTRY` / `CHARSET_ENCODING`, the `encoding()` override or the glyph set change.
+- **Strict numbers**: integer fields accept only ASCII `[+-]digits` within the signed 32-bit range (no `1_2`, non-ASCII digits, `0x10`), `STARTFONT` only `digits[.digits]` (no `inf`, `nan`, `.5`, `1e1`); otherwise `BDFParseError`. Unquoted property values are `int` only within −2³¹ … 2³²−1 (else kept as `str`).
+- **Whitespace** is ASCII space, `\t`, `\n`, `\v`, `\f`, `\r` only (U+001C–U+001F, U+0085, U+FEFF are ordinary characters). `COMMENT` lines inside `BITMAP` are ignored. Negative `BBX` / `FONTBOUNDINGBOX` width or height → `BDFParseError`. A property line `comment …` (any case) is a comment (with a warning) instead of colliding with `props['comment']`.
+- Drawing a glyph (and writing a TTF) with a non-hex character in a bitmap row raises a `ValueError` naming the glyph and the row (previously `int()` accepted `_`, spaces, `0x`, ...).
+- `Bitmap.crop()` with a negative size raises `ValueError`; `Bitmap.overlay()` keeps the size of the bitmap (the other one is aligned top-left and clipped); vertical `Bitmap.concatall()` skips empty bitmaps (rows always have equal length); `todata(4)` / `todata(5)` accept zero-width rows.
+- PCF writer: range checks before any allocation (32-bit integer properties, 16-bit `FONT_ASCENT` / `FONT_DESCENT`); a huge `FONT_ASCENT` no longer produces a gigabyte-sized file.
+- TrueType: the `cmap` never maps surrogates; `read_ttf()` rejects glyphs larger than 2²⁴ pixels. `tosvgfont()` writes Unicode values (`cp2char`) in `unicode` / `unicode-range`, so non-Unicode fonts are correct; unmappable glyphs get no `unicode` attribute.
+- CLI: `bdfparser info` / `preview` no longer crash on consoles that cannot encode every character (Windows code pages).
+- Release workflow: publishing only from a published GitHub release whose tag equals `v` + `bdfparser.__version__`.
+
 ### Fixed
 
 - Missing `import warnings` in `bitmap.py`.

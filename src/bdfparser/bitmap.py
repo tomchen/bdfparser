@@ -225,15 +225,22 @@ class Bitmap:
         Crop and/or extend the bitmap to `w` x `h`; `(xoff, yoff)` is the position of
         the new bitmap's bottom-left corner relative to the current one's (y up).
 
+        Raises `ValueError` if `w` or `h` is negative.
+
         https://font.tomchen.org/bdfparser_py/bitmap#crop
         """
 
+        if w < 0 or h < 0:
+            raise ValueError(f'Bitmap.crop: negative width or height ({w}, {h})')
         self.bindata = self.__crop_bitmap(self.bindata, w, h, xoff, yoff)
         return self
 
     def overlay(self, bitmap: Bitmap) -> Bitmap:
         """
-        Overlay another bitmap over the current one.
+        Overlay another bitmap over the current one: non-`'0'` pixels of `bitmap`
+        win. The size of the current bitmap is kept; `bitmap` is aligned at the
+        top-left and clipped, missing pixels count as `'0'` (a warning is
+        emitted if the sizes differ).
 
         https://font.tomchen.org/bdfparser_py/bitmap#overlay
         """
@@ -249,10 +256,13 @@ class Bitmap:
                 'the bitmaps to overlay have different width', BDFParserWarning, stacklevel=2
             )
         # b over a
-        self.bindata = [
-            ''.join(b if b != '0' else a for a, b in zip(la, lb, strict=False))
-            for la, lb in zip(bindata_a, bindata_b, strict=False)
-        ]
+        out = []
+        for i, la in enumerate(bindata_a):
+            lb = bindata_b[i] if i < len(bindata_b) else ''
+            if len(lb) < len(la):
+                lb = lb.ljust(len(la), '0')
+            out.append(''.join(b if b != '0' else a for a, b in zip(la, lb, strict=False)))
+        self.bindata = out
         return self
 
     @classmethod
@@ -292,12 +302,18 @@ class Bitmap:
                         ret[ireal] = stroffconcat(ret[ireal], '0' * bitmap.width(), offset)
 
         else:  # vertical
-            maxsize = max(bitmap.width() for bitmap in bitmaplist)
-            ret = []
-            offset = 0
+            # empty (0-height or 0-width) bitmaps are skipped, together with the
+            # offset before them (SPEC-v3 §11.4); the first kept bitmap gets no offset
+            kept: list[tuple[Bitmap, int]] = []
             for bi, bitmap in enumerate(bitmaplist):
-                if offsetlist and bi != 0:
-                    offset = offsetlist[bi - 1]
+                if bitmap.height() and bitmap.width():
+                    off = offsetlist[bi - 1] if offsetlist and bi != 0 else 0
+                    kept.append((bitmap, off if kept else 0))
+            if not kept:
+                return cls([])
+            maxsize = max(bitmap.width() for bitmap, _ in kept)
+            ret = []
+            for bitmap, offset in kept:
                 bd = bitmap.bindata
                 w = bitmap.width()
                 if w != maxsize:
@@ -469,11 +485,14 @@ class Bitmap:
         elif datatype == 3:
             return [int(p) for row in self.bindata for p in row]
         elif datatype == 4:
-            # if there are '2's, it will throw error
-            return [hex(int(row, 2))[2:].zfill(-1 * self.width() // 4 * -1) for row in self.bindata]
+            # if there are '2's, it will throw error; zero-width rows give ''
+            return [
+                hex(int(row, 2))[2:].zfill(-1 * self.width() // 4 * -1) if row else ''
+                for row in self.bindata
+            ]
         elif datatype == 5:
-            # if there are '2's, it will throw error
-            return [int(row, 2) for row in self.bindata]
+            # if there are '2's, it will throw error; zero-width rows give 0
+            return [int(row, 2) if row else 0 for row in self.bindata]
         raise ValueError(f'Unknown datatype {datatype!r}')
 
     def tobytes(self, mode: str = 'RGB', bytesdict: dict | None = None) -> bytes:

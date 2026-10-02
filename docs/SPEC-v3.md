@@ -637,3 +637,73 @@ divergences except the ones listed as permanent language differences below).
 - TTF `cmap`: never map surrogates U+D800–U+DFFF or values > U+10FFFF (such glyphs stay in the font, unmapped).
 - `tosvgfont`: the `unicode` attribute and `unicode-range` use `cp2char` (Unicode) values; glyphs with no Unicode mapping get no `unicode` attribute; `format='char'` never fails (unmappable ⇒ attribute omitted).
 - Readers: `read_ttf` refuses a glyph whose pixel box exceeds 2^24 pixels (`ValueError`, same message as JS).
+
+### 11.6 Resolved details (Python reference implementation; JS must match)
+
+Details the sections above leave open, as implemented in Python. Message
+texts are exact (`{…}` = value; Python error class / JS error class).
+
+- **Charset table API** (for `bdfparser-js/tools/gen_charsets.py`):
+  `bdfparser.encoding.charset_table()` → `{key: {codec, kind, gl, forcegl,
+  props, aliases}}` (`kind` ∈ `unicode`, `sbcs`, `dbcs`, `gb18030`; Unicode
+  keys included, plus any key starting with `UNICODE_PREFIXES`);
+  `codec_name(key)`; `charset_map(key)` → every valid 1- and 2-byte code (non-GL
+  form) → character, exactly as `cp2char`; reverse direction:
+  `charset_codec(key).char2cp(ch)` for each character of the map (decides
+  duplicates); `gb18030_ranges()` → 4-byte runs `(index, codepoint, length)`
+  with `index = (((b0−0x81)·10 + (b1−0x30))·126 + (b2−0x81))·10 + (b3−0x30)`.
+- Table keys: `ascii iso646 iso8859{1..11,13..16} koi8r koi8u cp1250..cp1258
+  cp437 cp850 cp852 cp866 cp874 tis620 macroman jisx0201` (sbcs), `gb2312 euccn
+  iso2022cn gbk cp936 jisx0208 eucjp shiftjis cp932 ksc5601 euckr cp949 johab
+  big5 big5hkscs cp950` (dbcs), `gb18030`; aliases `sjis`→`shiftjis`,
+  `ksx1001`→`ksc5601`. Registries `MICROSOFT`/`WINDOWS`/`MS`/`IBM` + encoding
+  `cpN`/`windowsN`/`winN`/`msN`/`ibmN`/`N`, and a registry spelled that way
+  (`windows-1252`, `ibm437`, `ms932`), give `cpN` if that is a table key.
+  `ISO8859` + encoding: ASCII digits only, leading zeros ignored (`ISO8859-01`
+  → `iso88591`), else 1. `KOI8` + `''`/`R` → `koi8r`, `U` → `koi8u`, anything
+  else `koi8<enc>` (unknown: `KOI8-RU` → `koi8ru`, identity + warning).
+  `charsetconvert` props: `IBM`/`CP437` for cp437/850/852/866, `MICROSOFT`/`CPn`
+  for the other `cpN`.
+- `cp2char` returns only a **single code point**: a code whose bytes decode to
+  several characters (Big5-HKSCS 0x8862 = `Ê` + U+0304) is unmapped. In GL form a
+  2-byte code must have both bytes in 0x21–0x7E (EUC-JP SS2 half-width katakana
+  has no GL form). Single-byte charsets reject codes ≥ 0x100, DBCS ≥ 0x10000.
+- Module-level `char2cp`/`cp2char` with an unknown charset warn once per
+  canonical name (process-wide): `Unknown charset '{key}', characters are
+  mapped to codepoints as Unicode`.
+- Hex row error (§11.4): `Glyph "{glyphname}" (codepoint {codepoint}): bitmap
+  row {i} {JSON string of the row} contains a non-hex character` (`ValueError` /
+  `Error`); every row of `hexdata` is checked when drawing; the TTF writer
+  checks rows `0 … bbh−1` of glyphs with `bbw, bbh > 0`.
+- `Bitmap.crop` (§11.4): `Bitmap.crop: negative width or height ({w}, {h})`.
+- Vertical `concatall` (§11.4): the result is exactly `concatall` of the list
+  with the empty bitmaps removed together with the offset *before* each of them
+  (`offsetlist[i−1]` belongs to bitmap `i`); the first kept bitmap gets no
+  offset; all bitmaps empty ⇒ `Bitmap([])`. So `concat` with an empty bitmap
+  (either side) is the identity, and a drawing whose lines are all 0 pixels wide
+  is `[]`.
+- PCF writer guards (§11.2), checked in this order before any bitmap is built:
+  1. every integer property (in property order, incl. `FONT_ASCENT`,
+     `FONT_DESCENT`, `DEFAULT_CHAR`) must be in −2³¹ … 2³²−1: `PCF: property
+     {NAME} value {v} does not fit in 32 bits` (`NAME` = the written spelling);
+  2. the same for the generated `POINT_SIZE` (float32(pointsize)·10),
+     `RESOLUTION`, `RESOLUTION_X/Y` …;
+  3. `FONT_ASCENT`, `FONT_DESCENT` (from the properties or derived from
+     FONTBOUNDINGBOX) and their sum must each fit int16 (they are `short` in the
+     X font info and become cell metrics of terminal fonts): `PCF: FONT_ASCENT
+     {a} / FONT_DESCENT {d} do not fit in 16 bits`;
+  4. per glyph (glyph order): `Glyph "{name}" has a negative sized bitmap,
+     {w}x{h}`, then `Glyph "{name}": metric value {v} does not fit in 16 bits`.
+  (`PCFError` / `RangeError`.)
+- `read_ttf` guard (§11.5): `max(w,1)·max(h,1) > 2^24` ⇒ `Malformed TrueType
+  font: glyph {gid} bounding box too large ({w}x{h} pixels)`, for the computed
+  box and for a BDFP box, before rasterizing.
+- `tosvgfont`: Unicode value = `cp2char(cp)` if it is one code point that is
+  not a surrogate (surrogates are unmapped, like in the TTF cmap); control
+  characters are judged on the Unicode value (< U+0020); `unicode-range` = runs
+  of the sorted distinct mapped values.
+- Properties block: a first token that is ASCII and equals `comment`
+  case-insensitively (but is not `COMMENT`) warns `line {n}: property '{key}'
+  treated as a COMMENT line`.
+- Number syntax: `STARTPROPERTIES n` with a malformed `n` only warns (the
+  count is informational); every other numeric field follows §11.2.

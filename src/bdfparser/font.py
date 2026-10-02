@@ -31,8 +31,19 @@ __all__ = ['Font']
 
 Range = int | tuple[int, int] | list[tuple[int, int]]
 
+# BDF whitespace: ASCII space, \t, \n, \v, \f, \r only (SPEC-v3 §11.4)
+_WS = ' \t\n\v\f\r'
+_RE_WS = re.compile(r'[ \t\n\v\f\r]+')
 _RE_INT = re.compile(r'[+-]?[0-9]+')
-_RE_VVECTOR = re.compile(r'[,\s]+')
+_RE_VERSION = re.compile(r'[0-9]+(?:\.[0-9]+)?')
+_RE_VVECTOR = re.compile(r'[, \t\n\v\f\r]+')
+# second letter of COMMENT, ENDCHAR / ENDFONT, STARTCHAR (never a hex digit)
+_KW2 = frozenset('ONT')
+_INT32_MIN = -(2**31)
+_INT32_MAX = 2**31 - 1
+# unquoted property values are ints only within this range (SPEC-v3 §11.2)
+_PROPINT_MIN = -(2**31)
+_PROPINT_MAX = 2**32 - 1
 _RE_PARSEINT = re.compile(r'\s*([+-]?[0-9]+)')
 
 _PCF_MAGIC = b'\x01fcp'
@@ -80,8 +91,32 @@ def fmtver(v: float) -> str:
     return f'{int(f)}.0' if f.is_integer() else repr(f)
 
 
+def _split_kv(line: str) -> tuple[str, str]:
+    """`'KEY  rest of line'` -> `('KEY', 'rest of line')` (line already stripped)."""
+    # fast paths: a printable string has no whitespace other than ' '
+    i = line.find(' ')
+    if i == -1:
+        if line.isprintable():
+            return line, ''
+    else:
+        key = line[:i]
+        if key.isprintable():
+            return key, line[i + 1 :].lstrip(_WS)
+    m = _RE_WS.search(line)
+    if m is None:
+        return line, ''
+    return line[: m.start()], line[m.end() :]
+
+
+def _tokens(value: str) -> list[str]:
+    if value.isprintable():  # fast path: ' ' is the only whitespace
+        return value.split()
+    value = value.strip(_WS)
+    return _RE_WS.split(value) if value else []
+
+
 def _unquote_comment(value: str) -> str:
-    value = value.strip()
+    value = value.strip(_WS)
     if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
         return value[1:-1]
     return value
@@ -105,7 +140,9 @@ def _parse_prop_value(value: str, lineno: int) -> int | str:
         _warn(f'line {lineno}: property value has no closing quote')
         return ''.join(out)
     if _RE_INT.fullmatch(value):
-        return int(value)
+        v = int(value)
+        if _PROPINT_MIN <= v <= _PROPINT_MAX:
+            return v
     return value
 
 
@@ -177,6 +214,7 @@ class Font:
         self._char2cp_override: Callable[[str], int | None] | None = None
         self._cp2char_override: Callable[[int], str | None] | None = None
         self._warned_charsets: set[str] = set()
+        self._codec_cache: tuple[tuple, CharsetCodec] | None = None
 
         if source is None:
             return
@@ -195,6 +233,7 @@ class Font:
         self.glyphs = {}
         self.unencoded = []
         self._propnames = {}
+        self._codec_cache = None
 
     def _assign(self, other: Font) -> Font:
         self.headers = other.headers
@@ -202,6 +241,7 @@ class Font:
         self.glyphs = other.glyphs
         self.unencoded = other.unencoded
         self._propnames = other._propnames
+        self._codec_cache = None
         return self
 
     # ------------------------------------------------------------------
@@ -357,14 +397,26 @@ class Font:
         startline = 0
         altcode: int | None = None
 
+        def num(tok: str, key: str, value: str) -> int:
+            # strict ASCII integer syntax, signed 32-bit range (SPEC-v3 §11.2)
+            if not (tok.isascii() and (tok.isdigit() or (tok[:1] in '+-' and tok[1:].isdigit()))):
+                raise BDFParseError(f'malformed number in {key} {value!r}', lineno)
+            v = int(tok)
+            if not _INT32_MIN <= v <= _INT32_MAX:
+                raise BDFParseError(f'number {tok} in {key} is out of the 32-bit range', lineno)
+            return v
+
         def ints(value: str, n: int, key: str, sep: re.Pattern | None = None) -> list[int]:
-            parts = sep.split(value.strip()) if sep else value.split()
+            if sep:
+                v = value.strip(_WS)
+                parts = sep.split(v) if v else []
+            elif value.isprintable():  # fast path: ' ' is the only whitespace
+                parts = value.split()
+            else:
+                parts = _tokens(value)
             if len(parts) < n:
                 raise BDFParseError(f'{key} needs {n} numbers, got {value!r}', lineno)
-            try:
-                return [int(p) for p in parts[:n]]
-            except ValueError:
-                raise BDFParseError(f'malformed number in {key} {value!r}', lineno) from None
+            return [num(p, key, value) for p in parts[:n]]
 
         def end_headers() -> None:
             if 'metricsset' not in headers:
@@ -426,23 +478,24 @@ class Font:
             lineno += 1
             if lineno == 1 and raw.startswith('\ufeff'):  # UTF-8 BOM (text file objects)
                 raw = raw[1:]
-            line = raw.strip()
+            line = raw.strip(_WS)
             if not line:
                 continue
 
             if state == 5:  # BITMAP rows (hot path)
-                if line == 'ENDCHAR':
-                    finish_glyph()
-                    state = 3
+                if line[1:2] not in _KW2 or line[0] not in 'CES':  # cannot be a keyword
+                    hexdata.append(line)
                     continue
-                first = line.split(None, 1)[0]
+                first, value = _split_kv(line)
                 if first == 'ENDCHAR':
                     finish_glyph()
                     state = 3
+                elif first == 'COMMENT':
+                    pass  # comments inside BITMAP are ignored (SPEC-v3 §11.4)
                 elif first == 'STARTCHAR':
                     _warn(f"line {lineno}: missing ENDCHAR for glyph '{meta[0]}'")
                     finish_glyph()
-                    start_glyph(line[9:].strip())
+                    start_glyph(value)
                     state = 4
                 elif first == 'ENDFONT':
                     _warn(f"line {lineno}: missing ENDCHAR for glyph '{meta[0]}'")
@@ -453,22 +506,15 @@ class Font:
                     hexdata.append(line)
                 continue
 
-            kv = line.split(None, 1)
-            key = kv[0]
-            value = kv[1] if len(kv) == 2 else ''
+            key, value = _split_kv(line)
 
             if state == 4:  # inside a glyph, before BITMAP
                 if key == 'ENCODING':
                     if 'ENCODING' not in used:
-                        parts = value.split()
+                        parts = _tokens(value)
                         if not parts:
                             raise BDFParseError('ENCODING needs a number', lineno)
-                        try:
-                            nums = [int(p) for p in parts[:2]]
-                        except ValueError:
-                            raise BDFParseError(
-                                f'malformed number in ENCODING {value!r}', lineno
-                            ) from None
+                        nums = [num(p, key, value) for p in parts[:2]]
                         meta[1] = nums[0]
                         if nums[0] < 0 and len(nums) > 1:
                             altcode = nums[1]
@@ -476,6 +522,11 @@ class Font:
                 elif key == 'BBX':
                     if 'BBX' not in used:
                         meta[2:6] = ints(value, 4, key)
+                        if meta[2] < 0 or meta[3] < 0:
+                            raise BDFParseError(
+                                f"glyph '{meta[0]}' has a negative BBX size {meta[2]} {meta[3]}",
+                                lineno,
+                            )
                         used.add(key)
                 elif key in _GLYPH_METRICS:
                     if key not in used:
@@ -492,7 +543,7 @@ class Font:
                 elif key == 'STARTCHAR':
                     _warn(f"line {lineno}: missing ENDCHAR for glyph '{meta[0]}'")
                     finish_glyph()
-                    start_glyph(value.strip())
+                    start_glyph(value)
                 elif key == 'ENDFONT':
                     _warn(f"line {lineno}: missing ENDCHAR for glyph '{meta[0]}'")
                     finish_glyph()
@@ -504,7 +555,7 @@ class Font:
 
             if state == 3:  # between glyphs
                 if key == 'STARTCHAR':
-                    start_glyph(value.strip())
+                    start_glyph(value)
                     state = 4
                 elif key == 'ENDFONT':
                     state = 6
@@ -523,7 +574,11 @@ class Font:
                             f'which does not match the actual property count {propseen}'
                         )
                     state = 2
-                elif key == 'COMMENT':
+                elif key == 'COMMENT' or (key.isascii() and key.lower() == 'comment'):
+                    if key != 'COMMENT':
+                        # `comment`, `Comment` ... would collide with the comment
+                        # list `props['comment']` (SPEC-v3 §11.3)
+                        _warn(f'line {lineno}: property {key!r} treated as a COMMENT line')
                     props.setdefault('comment', []).append(_unquote_comment(value))
                 elif key in ('CHARS', 'STARTCHAR', 'ENDFONT'):
                     _warn(f"line {lineno}: missing 'ENDPROPERTIES'")
@@ -532,7 +587,7 @@ class Font:
                         state = 3
                     elif key == 'STARTCHAR':
                         _warn("Cannot find 'CHARS' line")
-                        start_glyph(value.strip())
+                        start_glyph(value)
                         state = 4
                     else:
                         _warn('This font does not have any glyphs')
@@ -551,7 +606,7 @@ class Font:
                     state = 3
                 elif key == 'STARTCHAR':
                     _warn("Cannot find 'CHARS' line next to 'ENDPROPERTIES' line")
-                    start_glyph(value.strip())
+                    start_glyph(value)
                     state = 4
                 elif key == 'ENDFONT':
                     _warn('This font does not have any glyphs')
@@ -563,20 +618,21 @@ class Font:
 
             # state 0: header
             if key == 'STARTFONT':
-                try:
-                    headers['bdfversion'] = float(value)
-                except ValueError:
-                    raise BDFParseError(
-                        f'malformed version number in STARTFONT {value!r}', lineno
-                    ) from None
+                if not _RE_VERSION.fullmatch(value):
+                    raise BDFParseError(f'malformed version number in STARTFONT {value!r}', lineno)
+                headers['bdfversion'] = float(value)
             elif key == 'FONT':
-                headers['fontname'] = value.strip()
+                headers['fontname'] = value
             elif key == 'SIZE':
                 headers['pointsize'], headers['xres'], headers['yres'] = ints(value, 3, key)
             elif key == 'FONTBOUNDINGBOX':
                 (headers['fbbx'], headers['fbby'], headers['fbbxoff'], headers['fbbyoff']) = ints(
                     value, 4, key
                 )
+                if headers['fbbx'] < 0 or headers['fbby'] < 0:
+                    raise BDFParseError(
+                        f'negative FONTBOUNDINGBOX size {headers["fbbx"]} {headers["fbby"]}', lineno
+                    )
             elif key == 'COMMENT':
                 headers.setdefault('comment', []).append(_unquote_comment(value))
             elif key in ('METRICSSET', 'CONTENTVERSION'):
@@ -588,9 +644,10 @@ class Font:
                 )
             elif key == 'STARTPROPERTIES':
                 end_headers()
-                try:
-                    propcount = int(value.split()[0]) if value else None
-                except ValueError:
+                parts = _tokens(value)
+                if parts and _RE_INT.fullmatch(parts[0]):
+                    propcount = int(parts[0])
+                elif parts:
                     _warn(f'line {lineno}: malformed property count {value!r}')
                 state = 1
             elif key == 'CHARS':
@@ -606,7 +663,7 @@ class Font:
                 )
                 _warn("Cannot find 'CHARS' line")
                 end_headers()
-                start_glyph(value.strip())
+                start_glyph(value)
                 state = 4
             elif key == 'ENDFONT':
                 _warn(
@@ -682,7 +739,7 @@ class Font:
         if not _charset_gl_capable(key):
             return False
         enc = self.props.get('charset_encoding')
-        if enc is not None and str(enc).strip() == '0':
+        if enc is not None and str(enc).strip(_WS) == '0':
             return True
         twobyte = [cp for cp in self.glyphs if 0x100 <= cp <= 0xFFFF]
         if not twobyte:
@@ -691,11 +748,27 @@ class Font:
         return 0x21 <= m >> 8 <= 0x7E and 0x21 <= m & 0xFF <= 0x7E
 
     def _codec(self) -> CharsetCodec:
+        # cached per font (SPEC-v3 §11.1); the cache is keyed on everything the
+        # resolution depends on: the `encoding()` override, the CHARSET_REGISTRY /
+        # CHARSET_ENCODING properties and the glyph set (identity and size of
+        # `glyphs`; library methods that change the codepoints also invalidate it)
+        glyphs = self.glyphs
+        token = (
+            self._charset_override,
+            self.props.get('charset_registry'),
+            self.props.get('charset_encoding'),
+            id(glyphs),
+            len(glyphs),
+        )
+        cache = self._codec_cache
+        if cache is not None and cache[0] == token:
+            return cache[1]
         key = self.charset
         codec = charset_codec(key, self._is_gl(key))
         if not codec.known and key not in self._warned_charsets:
             self._warned_charsets.add(key)
             _warn(f"Unknown charset '{key}', characters are mapped to codepoints as Unicode")
+        self._codec_cache = (token, codec)
         return codec
 
     def _converters(self) -> tuple[Callable[[str], int | None], Callable[[int], str | None]]:
@@ -1079,6 +1152,8 @@ class Font:
         if newcp is None or newcp < 0:
             newcp = new[1] = -1
         store[:] = new
+        if newcp != oldcp:
+            self._codec_cache = None
         if uidx != -1:
             if newcp >= 0:
                 del self.unencoded[uidx]
@@ -1122,6 +1197,7 @@ class Font:
 
         lst = self.__meta_to_list(glyph)
         cp = lst[1]
+        self._codec_cache = None
         if cp < 0:
             lst[1] = -1
             self.unencoded.append({'altcode': None, 'meta': lst})
@@ -1143,6 +1219,7 @@ class Font:
         https://font.tomchen.org/bdfparser_py/font#removeglyph
         """
 
+        self._codec_cache = None
         if not isinstance(cp_or_glyph, Glyph):
             self.glyphs.pop(cp_or_glyph, None)
             return self
@@ -1275,6 +1352,7 @@ class Font:
         https://font.tomchen.org/bdfparser_py/font#merge
         """
 
+        self._codec_cache = None
         for cp, lst in other.glyphs.items():
             if cp in self.glyphs and not replace:
                 continue
@@ -1333,6 +1411,7 @@ class Font:
                 f"{dropped} glyph(s) could not be converted to the charset '{key}' and were dropped"
             )
         self.glyphs = newglyphs
+        self._codec_cache = None
         registry, enc = charset_props(key)
         self.setprop('CHARSET_REGISTRY', registry)
         self.setprop('CHARSET_ENCODING', enc)
@@ -1447,9 +1526,13 @@ class Font:
 
         - `xoff`, `yoff`: offsets added to all glyph paths;
         - `controlcharnoskip`: also write the `unicode` attribute for control
-          characters (codepoint < 32), default `False` (FontForge can't load them);
+          characters (< U+0020), default `False` (FontForge can't load them);
         - `unicodeformat`: `'hexncr'` (`&#x4ab;`, default), `'decncr'` (`&#1195;`)
           or `'char'` (the character itself).
+
+        The `unicode` attributes and `unicode-range` use the Unicode values of
+        the glyphs (`cp2char`, so non-Unicode charsets are converted); glyphs
+        with no Unicode mapping get no `unicode` attribute.
 
         https://font.tomchen.org/bdfparser_py/font#tosvgfont
         """
@@ -1477,7 +1560,19 @@ class Font:
         if meta:
             out.append('<metadata>\n  ' + _xml('\n  '.join(meta)) + '\n</metadata>\n')
 
-        cps = sorted(self.glyphs)
+        # Unicode values (SPEC-v3 §11.5): `cp2char` of the font's charset; glyphs
+        # without a Unicode mapping (or mapped to a surrogate) get no `unicode`
+        p2c = self._converters()[1]
+
+        def unicode_of(cp: int) -> int | None:
+            ch = p2c(cp)
+            if isinstance(ch, str) and len(ch) == 1:
+                u = ord(ch)
+                return None if 0xD800 <= u <= 0xDFFF else u
+            return None
+
+        unis = {cp: unicode_of(cp) for cp in self.glyphs}
+        cps = sorted({u for u in unis.values() if u is not None})
         ranges = []
         i = 0
         while i < len(cps):
@@ -1529,15 +1624,15 @@ class Font:
             if not path:
                 continue
             m = glyph.meta
-            cp = m['codepoint']
+            u = unis.get(m['codepoint'])
             attrs: list[tuple[str, Any]] = [('glyph-name', _xml(m['glyphname']))]
-            if controlcharnoskip or cp >= 32:
+            if u is not None and (controlcharnoskip or u >= 32):
                 if unicodeformat == 'decncr':
-                    uni = f'&#{cp};'
+                    uni = f'&#{u};'
                 elif unicodeformat == 'char':
-                    uni = _xml(chr(cp))
+                    uni = _xml(chr(u))
                 else:
-                    uni = f'&#x{cp:x};'
+                    uni = f'&#x{u:x};'
                 attrs.append(('unicode', uni))
             attrs.append(('horiz-adv-x', _xml(m.get('dwx0') or h.get('dwx0') or upem)))
             attrs.append(('d', _xml(path)))

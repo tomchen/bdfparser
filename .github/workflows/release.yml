@@ -1,9 +1,10 @@
 name: Release
 
+# Publishing happens only for a published GitHub release whose tag is
+# `v<bdfparser.__version__>` (no manual runs from arbitrary branches).
 on:
   release:
     types: [published]
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -16,6 +17,15 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.14'
+      - name: Check that the release tag matches bdfparser.__version__
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          version="$(uv run python -c 'import bdfparser; print(bdfparser.__version__)')"
+          if [ "$TAG" != "v$version" ]; then
+            echo "::error::release tag '$TAG' does not match bdfparser.__version__ '$version' (expected 'v$version')"
+            exit 1
+          fi
       - name: Test
         run: uv run pytest -q
       - name: Build sdist and wheel
@@ -27,6 +37,7 @@ jobs:
 
   publish:
     needs: build
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
     environment:
       name: pypi

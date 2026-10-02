@@ -33,7 +33,9 @@ port MUST make the same choices so that outputs are byte-identical):
  6. ``head`` bounds, ``hhea`` min/max and ``maxp`` maxima include gid 0.
  7. Unicode mapping: ``font.cp2char(cp)`` (if the Font provides it, else the
     codepoint itself when ``0 <= cp <= 0x10FFFF``) must return exactly one
-    Unicode code point (JS: count code points, not UTF-16 units).
+    Unicode code point (JS: count code points, not UTF-16 units) that is not
+    a surrogate (U+D800-U+DFFF); other glyphs stay in the font, unmapped
+    (SPEC-v3 §11.5).
     ``usFirstCharIndex``/``usLastCharIndex`` use the mapped code points
     (first-gid-wins dedupe is irrelevant for min/max).
  8. cmap format 4 only contains codes ``0x0000…0xFFFE``: U+FFFF is always the
@@ -78,7 +80,9 @@ glyph name = post name (if non-empty) else ``defaultglyphname(cp)`` else
 recomputed from the (transformed) points incl. off-curve points. Composite
 glyphs support offsets, point matching and scale / x-y scale / 2×2 (offsets
 are never scaled). With a full ``BDFP`` glyph entry the outline is rasterized
-into the stored box without trimming.
+into the stored box without trimming. A glyph whose pixel box exceeds 2**24
+pixels raises ``ValueError("Malformed TrueType font: glyph {gid} bounding box
+too large ({w}x{h} pixels)")`` (SPEC-v3 §11.5).
 """
 
 from __future__ import annotations
@@ -91,6 +95,7 @@ from collections.abc import Callable, Sequence
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from .glyph import _RE_HEX, _hexrow_error
 from .outline import bitmap_contours, rasterize
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -177,7 +182,9 @@ def _bindata(meta: Sequence[Any]) -> list[str]:
     hexdata = meta[16] or []
     rows = []
     for i in range(bbh):
-        h = hexdata[i].strip() if i < len(hexdata) else ''
+        h = hexdata[i] if i < len(hexdata) else ''
+        if not _RE_HEX.fullmatch(h):
+            raise _hexrow_error(meta[0], meta[1], i, h)
         bits = bin(int(h, 16))[2:].zfill(len(h) * 4) if h else ''
         rows.append(bits[:bbw].ljust(bbw, '0'))
     return rows
@@ -222,7 +229,9 @@ def _cp2unicode(font: Any) -> Callable[[int], int | None]:
         else:
             ch = chr(cp) if 0 <= cp <= 0x10FFFF else None
         if isinstance(ch, str) and len(ch) == 1:
-            return ord(ch)
+            u = ord(ch)
+            # never map surrogates (SPEC-v3 §11.5); chr() caps at U+10FFFF
+            return None if 0xD800 <= u <= 0xDFFF else u
         return None
 
     return conv
@@ -1161,7 +1170,7 @@ def read_ttf(data: bytes | bytearray | memoryview, pixelsize: int | None = None)
             name = _defaultglyphname(cp)
         else:
             name = f'glyph{gid}'
-        meta = _raster_meta(gr.contours(gid), ppu, None)
+        meta = _raster_meta(gr.contours(gid), ppu, None, gid)
         dwx = _round(advances[gid] / ppu)
         meta[0] = name
         meta[1] = cp if cp is not None else -1
@@ -1190,15 +1199,29 @@ def _swidth(font: Any, dwx: int) -> int:
     return _round(dwx * 1000 / max(h.get('fbbx') or 1, 1))
 
 
+# largest glyph pixel box the reader rasterizes (a corrupt or hostile outline or
+# BDFP box could otherwise ask for billions of pixels); same limit as JS
+_MAX_GLYPH_PIXELS = 1 << 24
+
+
+def _check_box(gid: int, w: int, h: int) -> None:
+    if max(w, 1) * max(h, 1) > _MAX_GLYPH_PIXELS:
+        raise ValueError(
+            f'Malformed TrueType font: glyph {gid} bounding box too large ({w}x{h} pixels)'
+        )
+
+
 def _raster_meta(
     contours: list[list[tuple[float, float, bool]]],
     ppu: float,
     box: tuple[int, int, int, int] | None,
+    gid: int = 0,
 ) -> list[Any]:
     """17-slot meta with BBX and hexdata filled from the rasterized outline."""
     meta: list[Any] = [None] * 17
     if box is not None:
         w, h, xo, yo = box
+        _check_box(gid, w, h)
         if w > 0 and h > 0:
             bm = rasterize(contours, ppu, xo, yo, w, h)
         else:
@@ -1215,6 +1238,7 @@ def _raster_meta(
     y0 = _floordiv(min(p[1] for p in pts), ppu)
     w = _ceildiv(max(p[0] for p in pts), ppu) - x0
     h = _ceildiv(max(p[1] for p in pts), ppu) - y0
+    _check_box(gid, w, h)
     bm = rasterize(contours, ppu, x0, y0, w, h) if w > 0 and h > 0 else []
     bm, w, h, xo, yo = _trim(bm, x0, y0)
     meta[2:6] = [w, h, xo, yo]
@@ -1265,11 +1289,11 @@ def _read_with_bdfp(
             raise ValueError('Malformed BDFP table: bad glyph entry')
         contours = gr.contours(gid)
         if len(e) == 18:
-            meta = _raster_meta(contours, ppu, (e[3], e[4], e[5], e[6]))
+            meta = _raster_meta(contours, ppu, (e[3], e[4], e[5], e[6]), gid)
             meta[6:16] = e[7:17]
             altcode = e[17]
         else:
-            meta = _raster_meta(contours, ppu, None)
+            meta = _raster_meta(contours, ppu, None, gid)
             dwx = _round(advances[gid] / ppu)
             meta[8], meta[9] = dwx, 0
             meta[6], meta[7] = _swidth(font, dwx), 0

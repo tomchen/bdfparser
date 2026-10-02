@@ -6,6 +6,8 @@ https://font.tomchen.org/bdfparser_py/glyph
 
 from __future__ import annotations
 
+import json
+import re
 from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING, Any
 
@@ -51,6 +53,17 @@ def defaultglyphname(cp: int, charset_is_unicode: bool = True) -> str:
     if cp <= 0xFFFF:
         return f'uni{cp:04X}'
     return f'u{cp:X}' if cp > 0xFFFFF else f'u{cp:05X}'
+
+
+_RE_HEX = re.compile(r'[0-9A-Fa-f]*')
+
+
+def _hexrow_error(name: Any, cp: Any, i: int, row: str) -> ValueError:
+    """Error for a hex row with a non-hex character (SPEC-v3 §11.4; same text as JS)."""
+    return ValueError(
+        f'Glyph "{name}" (codepoint {cp}): bitmap row {i} '
+        f'{json.dumps(row, ensure_ascii=False)} contains a non-hex character'
+    )
 
 
 def _snapshot(store: list) -> list:
@@ -168,12 +181,12 @@ class Glyph:
         return bitmap.crop(fbbx, fbby, -bbxoff + fbbxoff, -bbyoff + fbbyoff)
 
     def __draw_original(self) -> Bitmap:
-        return Bitmap(
-            [
-                format(int(h, 16), f'0{len(h) * 4}b') if h else ''
-                for h in self.meta.get('hexdata') or []
-            ]
-        )
+        rows = []
+        for i, h in enumerate(self.meta.get('hexdata') or []):
+            if not _RE_HEX.fullmatch(h):
+                raise _hexrow_error(self.meta.get('glyphname'), self.meta.get('codepoint'), i, h)
+            rows.append(format(int(h, 16), f'0{len(h) * 4}b') if h else '')
+        return Bitmap(rows)
 
     def __draw_bb(self) -> Bitmap:
         bbw = self.meta.get('bbw') or 0
