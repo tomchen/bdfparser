@@ -1,3 +1,5 @@
+import warnings
+
 class Bitmap(object):
     '''
     `Bitmap` object

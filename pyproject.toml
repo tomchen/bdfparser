@@ -1,3 +1,76 @@
 [build-system]
-requires = ["setuptools>=46.4.0", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "bdfparser"
+dynamic = ["version"]
+description = "BDF / PCF bitmap font parser, editor and converter (BDF, PCF, pixel TTF with square or round dots) in pure Python"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Tom Chen", email = "tomchen.org@gmail.com" }]
+requires-python = ">=3.10"
+keywords = ["bdf", "pcf", "ttf", "bitmap", "font", "pixel", "parser", "editor", "converter"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Topic :: Text Processing :: Fonts",
+    "Topic :: Multimedia :: Graphics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Operating System :: OS Independent",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://font.tomchen.org/bdfparser_py/"
+Documentation = "https://font.tomchen.org/bdfparser_py/"
+Source = "https://github.com/tomchen/bdfparser"
+Issues = "https://github.com/tomchen/bdfparser/issues"
+
+[project.scripts]
+bdfparser = "bdfparser.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=6",
+    "fonttools>=4.60",
+    "pillow>=11",
+    "ruff>=0.13",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "bdfparser.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+bdfparser = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+source = ["bdfparser"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "single"

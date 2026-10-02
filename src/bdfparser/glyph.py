@@ -1,5 +1,17 @@
 from .bitmap import Bitmap
 
+
+def defaultglyphname(cp, charset_is_unicode=True):
+    '''
+    Default glyph name for a codepoint: `uniXXXX` / `uXXXXX` (Unicode) or `char{cp}`.
+    '''
+
+    if not charset_is_unicode:
+        return 'char' + str(cp)
+    if cp <= 0xFFFF:
+        return 'uni%04X' % cp
+    return 'u%X' % cp if cp > 0xFFFFF else 'u%05X' % cp
+
 class Glyph(object):
     '''
     `Glyph` object

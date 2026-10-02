@@ -75,6 +75,8 @@ class Font(object):
         self.headers = ordered_dict()
         self.props = ordered_dict()
         self.glyphs = ordered_dict()
+        self.unencoded = []
+        self._propnames = {}
 
         self.__glyph_count_to_check = None
         self.__curline_startchar = None
@@ -349,6 +351,29 @@ class Font(object):
                 )
                 # Use old style for Python 3.5 support. For 3.6+:
                 # f"The glyph count next to 'CHARS' keyword is {str(self.__glyph_count_to_check)}, which does not match the actual glyph count {str(l)}"
+
+    def setprop(self, key, value):
+        '''
+        Set a property (case-insensitive key). Remembers the given spelling of a new key.
+        '''
+
+        k = key.lower()
+        if k not in self._propnames and k != 'comment':
+            self._propnames[k] = key
+        self.props[k] = value
+        return self
+
+    def swidth(self, dwx):
+        '''
+        Compute SWIDTH (scalable width, 1/1000 em) from DWIDTH (pixels).
+        '''
+
+        import math
+        pointsize = self.headers.get('pointsize')
+        xres = self.headers.get('xres')
+        if pointsize and xres:
+            return math.floor(dwx * 72000 / (pointsize * xres) + 0.5)
+        return math.floor(dwx * 1000 / max(self.headers.get('fbbx') or 1, 1) + 0.5)
 
     def length(self):
         '''
