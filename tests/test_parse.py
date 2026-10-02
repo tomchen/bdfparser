@@ -122,8 +122,29 @@ class TestLoadingSources:
         assert parse_strict('﻿' + mini_bdf).tobdf() == mini_bdf
         assert Font(b'\xef\xbb\xbf' + mini_bdf.encode()).tobdf() == mini_bdf
 
+    def test_bom_text_file_obj_and_lines(self):
+        # regression: a BOM read through a text file object / line iterable made the
+        # parser ignore the STARTFONT line ('\ufeffSTARTFONT' unknown keyword)
+        assert parse_strict('\ufeff' + mini_bdf).tobdf() == mini_bdf
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+            font = Font().load_file_obj(io.StringIO('\ufeff' + mini_bdf))
+            assert font.headers['bdfversion'] == 2.1 and font.tobdf() == mini_bdf
+            lines = ('\ufeff' + mini_bdf).split('\n')
+            assert Font().load_lines(lines).tobdf() == mini_bdf
+
     def test_gzip_bdf(self):
         assert Font(gzip.compress(mini_bdf.encode())).tobdf() == mini_bdf
+
+    @pytest.mark.parametrize(
+        'data',
+        [b'\x1f\x8b\x00\x00', gzip.compress(mini_bdf.encode())[:-12], b'\x1f\x8bgarbage!'],
+        ids=['header-only', 'truncated', 'garbage'],
+    )
+    def test_malformed_gzip_is_valueerror(self, data):
+        # regression: EOFError / zlib.error leaked (and crashed the CLI with a traceback)
+        with pytest.raises(ValueError, match='gzip'):
+            Font(data)
 
     def test_otto_rejected(self):
         with pytest.raises(ValueError, match='CFF'):

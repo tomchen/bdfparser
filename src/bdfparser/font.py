@@ -25,7 +25,7 @@ from .encoding import (
 from .encoding import _force_gl as _charset_force_gl
 from .encoding import _gl_capable as _charset_gl_capable
 from .errors import BDFParseError, _warn
-from .glyph import META_TITLES, Glyph, defaultglyphname
+from .glyph import META_TITLES, Glyph, _snapshot, defaultglyphname
 
 __all__ = ['Font']
 
@@ -242,7 +242,7 @@ class Font:
         https://font.tomchen.org/bdfparser_py/font#load_string
         """
 
-        if text.startswith('﻿'):
+        if text.startswith('\ufeff'):
             text = text[1:]
         return self.load_lines(_split_text(text))
 
@@ -270,8 +270,13 @@ class Font:
         head = data[:4]
         if head[:2] == _GZIP_MAGIC:
             import gzip
+            import zlib
 
-            return self.load_bytes(gzip.decompress(data), **ttfoptions)
+            try:
+                data = gzip.decompress(data)
+            except (OSError, EOFError, zlib.error) as e:
+                raise ValueError(f'Malformed gzip data: {e}') from None
+            return self.load_bytes(data, **ttfoptions)
         if head == _PCF_MAGIC:
             from .pcf import read_pcf
 
@@ -419,6 +424,8 @@ class Font:
 
         for raw in lines:
             lineno += 1
+            if lineno == 1 and raw.startswith('\ufeff'):  # UTF-8 BOM (text file objects)
+                raw = raw[1:]
             line = raw.strip()
             if not line:
                 continue
@@ -1046,30 +1053,44 @@ class Font:
         store = glyph._store
         if store is None:
             return
-        new = [glyph.meta.get(k) for k in META_TITLES]
-        if new[16] is None:
-            new[16] = []
-        newcp = new[1]
-        entry = next((e for e in self.unencoded if e['meta'] is store), None)
-        if entry is not None:
-            store[:] = new
-            if newcp is not None and newcp >= 0:
-                self.unencoded.remove(entry)
-                self.glyphs[newcp] = store
-            return
         oldcp = store[1]
-        if self.glyphs.get(oldcp) is not store:
+        uidx = -1
+        if oldcp is None or oldcp < 0:
+            uidx = next((i for i, e in enumerate(self.unencoded) if e['meta'] is store), -1)
+            if uidx == -1:
+                glyph._attached = False
+                return
+        elif self.glyphs.get(oldcp) is not store:
             # the glyph was removed from / replaced in the font: no longer attached
             glyph._attached = False
             return
+        new = [glyph.meta.get(k) for k in META_TITLES]
+        synced = glyph._synced
+        if synced is not None:
+            # slots this Glyph object did not change but that were changed in the
+            # font meanwhile (by another Glyph object on the same glyph, or by
+            # `charsetconvert`) keep the font's value instead of being reverted
+            for i in range(17):
+                if new[i] == synced[i] and store[i] != synced[i]:
+                    new[i] = store[i]
+        if new[16] is None:
+            new[16] = []
+        newcp = new[1]
+        if newcp is None or newcp < 0:
+            newcp = new[1] = -1
         store[:] = new
-        if newcp != oldcp:
+        if uidx != -1:
+            if newcp >= 0:
+                del self.unencoded[uidx]
+                self.glyphs[newcp] = store
+        elif newcp != oldcp:
             del self.glyphs[oldcp]
-            if newcp is None or newcp < 0:
-                store[1] = -1
+            if newcp < 0:
                 self.unencoded.append({'altcode': None, 'meta': store})
             else:
                 self.glyphs[newcp] = store
+        glyph.meta.update(zip(META_TITLES, store, strict=True))
+        glyph._synced = _snapshot(store)
 
     def __meta_to_list(self, meta: Any) -> list:
         if isinstance(meta, Glyph):
@@ -1122,18 +1143,26 @@ class Font:
         https://font.tomchen.org/bdfparser_py/font#removeglyph
         """
 
-        if isinstance(cp_or_glyph, Glyph):
-            store = cp_or_glyph._store
-            if store is not None:
+        if not isinstance(cp_or_glyph, Glyph):
+            self.glyphs.pop(cp_or_glyph, None)
+            return self
+        store = cp_or_glyph._store
+        if store is not None and cp_or_glyph.font is self:
+            # an attached glyph removes exactly its own slot (no-op if it was already
+            # removed or replaced: never the glyph that now has its codepoint)
+            cp = store[1]
+            if cp is None or cp < 0:
                 for i, e in enumerate(self.unencoded):
                     if e['meta'] is store:
                         del self.unencoded[i]
-                        cp_or_glyph._attached = False
-                        return self
-            cp = cp_or_glyph.cp()
+                        break
+            elif self.glyphs.get(cp) is store:
+                del self.glyphs[cp]
         else:
-            cp = cp_or_glyph
-        self.glyphs.pop(cp, None)
+            cp = cp_or_glyph.cp()
+            if cp is not None and cp >= 0:
+                self.glyphs.pop(cp, None)
+        cp_or_glyph._attached = False
         return self
 
     def newglyph(
@@ -1293,7 +1322,10 @@ class Font:
                 dropped += 1
                 continue
             if newcp in newglyphs:
+                # two glyphs map to the same codepoint: the later one wins and, as
+                # for a duplicate ENCODING in a BDF file, takes the later position
                 dropped += 1
+                del newglyphs[newcp]
             lst[1] = newcp
             newglyphs[newcp] = lst
         if dropped:

@@ -108,6 +108,11 @@ class TestBitmapConcat(unittest.TestCase):
         self.bitmap_qr2 = Bitmap(bitmap_qr2_bindata)
         self.bitmap_j = self.font.glyph('j').draw(mode=2)
 
+    def test_concatall_empty(self):
+        # regression: max() of an empty sequence (bdfparser-js returns an empty bitmap)
+        for direction in (1, 2, 0, -1):
+            self.assertEqual(Bitmap.concatall([], direction=direction).bindata, [])
+
     def test_concatall_onlyone(self):
         self.assertEqual(Bitmap.concatall([self.bitmap_qr]).bindata, self.bitmap_qr.bindata)
 

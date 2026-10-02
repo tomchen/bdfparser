@@ -1,0 +1,5 @@
+# sdist: library + docs only. The test suite needs ~14 MB of fonts and lives in
+# the git repository; setuptools would otherwise ship tests/test_*.py without
+# their helpers and fonts (an sdist test suite that cannot run).
+include CHANGELOG.md
+prune tests

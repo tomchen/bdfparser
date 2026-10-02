@@ -53,6 +53,13 @@ def defaultglyphname(cp: int, charset_is_unicode: bool = True) -> str:
     return f'u{cp:X}' if cp > 0xFFFFF else f'u{cp:05X}'
 
 
+def _snapshot(store: list) -> list:
+    snap = list(store)
+    if isinstance(snap[16], list):
+        snap[16] = list(snap[16])
+    return snap
+
+
 def _hexrow(row: str, ndigits: int) -> str:
     return format(int(row.ljust(ndigits * 4, '0'), 2), f'0{ndigits}X')
 
@@ -79,10 +86,14 @@ class Glyph:
         self.font = font
         self._attached = False
         self._store: list | None = None  # the 17-slot list stored in the font
+        # copy of the store as last seen by this glyph (to detect changes made to
+        # the font behind this object's back, see `Font._writeback`)
+        self._synced: list | None = None
 
     def _attach(self, store: list) -> None:
         self._attached = True
         self._store = store
+        self._synced = _snapshot(store)
 
     def _sync(self) -> None:
         if self._attached:

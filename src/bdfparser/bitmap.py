@@ -269,6 +269,8 @@ class Bitmap:
         https://font.tomchen.org/bdfparser_py/bitmap#bitmapconcatall
         """
 
+        if not bitmaplist:  # e.g. `font.draw('')`: an empty bitmap (as in bdfparser-js)
+            return cls([])
         if direction > 0:  # horizontal
             maxsize = max(bitmap.height() for bitmap in bitmaplist)
             ret = [''] * maxsize

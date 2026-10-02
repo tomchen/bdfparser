@@ -211,7 +211,10 @@ def _trim(bindata: list[str], xoff: int, yoff: int) -> tuple[list[str], int, int
 
 
 def _cp2unicode(font: Any) -> Callable[[int], int | None]:
-    cp2char = getattr(font, 'cp2char', None)
+    # resolve the charset converter once (`Font.cp2char` re-detects the charset,
+    # incl. the GL form scan over all glyphs, on every call)
+    converters = getattr(font, '_converters', None)
+    cp2char = converters()[1] if callable(converters) else getattr(font, 'cp2char', None)
 
     def conv(cp: int) -> int | None:
         if callable(cp2char):

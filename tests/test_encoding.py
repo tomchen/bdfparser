@@ -523,3 +523,34 @@ class TestCharsetConvert:
         with pytest.warns(BDFParserWarning, match='2 glyph'):
             font.charsetconvert('utf8')
         assert list(font.glyphs) == [65]
+
+    def test_collision_later_wins_at_later_position(self):
+        # regression: the later glyph replaced the earlier one IN PLACE, so tobdf()
+        # wrote a different glyph order than bdfparser-js (and than a duplicate
+        # ENCODING in a BDF file, where the later glyph also takes the later position)
+        font = Font.create(8)
+        for cp in (0x41, 0x42, 0x43):
+            font.newglyph(cp, name=f'g{cp:X}')
+        font.encoding(cp2char=lambda cp: 'A' if cp in (0x41, 0x43) else chr(cp))
+        with pytest.warns(BDFParserWarning, match='1 glyph'):
+            font.charsetconvert('utf8')
+        assert list(font.glyphs) == [0x42, 0x41]
+        assert font.glyphs[0x41][0] == 'g43'
+        assert font.tobdf().index('STARTCHAR g42') < font.tobdf().index('STARTCHAR g43')
+
+
+def test_tottf_resolves_charset_once(monkeypatch):
+    # regression: write_ttf called font.cp2char per glyph, which re-ran the GL-form
+    # detection (a scan of all glyphs) every time: quadratic for GB2312/JIS/KSC fonts
+    font = Font(enctest_path('gb2312'))
+    calls = []
+    orig = Font._is_gl
+
+    def counting(self, key):
+        calls.append(key)
+        return orig(self, key)
+
+    monkeypatch.setattr(Font, '_is_gl', counting)
+    data = font.tottf()
+    assert len(calls) == 1
+    assert sorted(Font(data).glyphs) == sorted(font.glyphs)

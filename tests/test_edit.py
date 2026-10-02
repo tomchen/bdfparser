@@ -259,9 +259,52 @@ class TestAttached:
         g1 = font.glyphbycp(65)
         g2 = font.glyphbycp(65)
         g1.setmeta(codepoint=90)
-        g2.shift(2)  # stale view of the same stored glyph: last writer wins (moves it back)
-        assert sorted(font.glyphs) == [32, 65, 66]
-        assert font.glyphs[65][4] == 2
+        # g2 is a stale view of the same stored glyph: its edit only changes what it
+        # changes (bbxoff) and does not revert g1's move
+        g2.shift(2)
+        assert sorted(font.glyphs) == [32, 66, 90]
+        assert font.glyphs[90][4] == 2
+        assert g2.meta['codepoint'] == 90 and g2.meta['bbxoff'] == 2
+        g1.setmeta(glyphname='Z')  # and g1 does not revert g2's shift
+        assert font.glyphs[90][0] == 'Z' and font.glyphs[90][4] == 2
+
+    def test_direct_meta_edit_is_written_with_next_edit(self, font):
+        g = font.glyphbycp(65)
+        g.meta['dwx0'] = 9  # direct change of the meta dict, then an editing method
+        g.shift(1)
+        assert font.glyphs[65][8] == 9 and font.glyphs[65][4] == 1
+
+    def test_stale_view_after_charsetconvert(self):
+        # regression: editing a glyph obtained before charsetconvert() moved it back
+        # to its old (GB2312) codepoint
+        f = Font(enctest_path('gb2312'))
+        g = f.glyphbycp(0xC8CB)  # 人 in GB2312 (EUC)
+        f.charsetconvert('ISO10646-1')
+        assert sorted(f.glyphs) == [0x41, 0x4EBA, 0x5149]
+        g.shift(1, 0)
+        assert sorted(f.glyphs) == [0x41, 0x4EBA, 0x5149]
+        assert f.glyphs[0x4EBA][4] == g.meta['bbxoff'] and g.meta['codepoint'] == 0x4EBA
+        assert g.chr() == '人'
+
+    def test_negative_codepoint_is_normalised(self, font):
+        g = font.glyphbycp(65)
+        g.setmeta(codepoint=-5)
+        assert font.unencoded[0]['meta'][1] == -1 and g.meta['codepoint'] == -1
+        g.setmeta(codepoint=None)
+        assert font.unencoded[0]['meta'][1] == -1 and g.meta['codepoint'] == -1
+        g.setmeta(codepoint=70)
+        assert font.unencoded == [] and font.glyphs[70][1] == 70
+        g.setmeta(codepoint=None)  # encoded -> unencoded
+        assert 70 not in font.glyphs and g.meta['codepoint'] == -1
+        assert font.unencoded[0]['meta'] is g._store
+        assert font.tobdf().count('ENCODING -1\n') == 1
+
+    def test_removed_unencoded_glyph_detaches(self, font):
+        g = font.glyphbycp(65)
+        g.setmeta(codepoint=-1)
+        font.unencoded.clear()
+        g.shift(1)
+        assert not g._attached and font.unencoded == [] and 65 not in font.glyphs
 
     def test_writeback_without_store(self, font):
         g = Glyph(meta(), font)
@@ -354,6 +397,28 @@ class TestAddRemove:
         assert not g._attached
         font.removeglyph(-1)  # codepoint -1 is ambiguous: no-op
         assert len(font.unencoded) == 2
+
+    def test_removeglyph_stale_glyph_is_noop(self, font):
+        # regression: removing a glyph object whose slot was replaced removed the
+        # replacement (the glyph that now has the codepoint)
+        old = font.glyphbycp(65)
+        font.newglyph(65, Bitmap.fromstring('##'))
+        font.removeglyph(old)
+        assert font.glyphs[65][0] == 'uni0041' and not old._attached
+        moved = font.glyphbycp(66)
+        moved.setmeta(codepoint=67)
+        font.addglyph(meta(66))
+        font.removeglyph(moved)  # removes its own slot (67), not 66
+        assert sorted(font.glyphs) == [32, 65, 66] and not moved._attached
+
+    def test_removeglyph_detached_or_foreign_glyph_uses_codepoint(self, font):
+        font.removeglyph(Glyph(meta(65), font))
+        assert 65 not in font.glyphs
+        other = Font().load_string(font.tobdf())
+        font.removeglyph(other.glyphbycp(66))
+        assert 66 not in font.glyphs and 66 in other.glyphs
+        font.removeglyph(Glyph(meta(-1), font))  # unencoded, detached: no-op
+        assert sorted(font.glyphs) == [32]
 
     def test_newglyph_empty(self, font):
         g = font.newglyph(0x263A)

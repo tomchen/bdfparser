@@ -148,6 +148,14 @@ def test_parse_error(tmp_path, capsys):
     assert 'line 2' in capsys.readouterr().err
 
 
+def test_truncated_gzip_input(tmp_path, capsys):
+    # regression: EOFError from gzip escaped the CLI's error handling (traceback)
+    p = tmp_path / 'bad.pcf.gz'
+    p.write_bytes(gzip.compress(Font().load_string(mini_bdf).topcf())[:40])
+    assert main(['info', str(p)]) == 1
+    assert capsys.readouterr().err.startswith('bdfparser: error: Malformed gzip data')
+
+
 def test_usage_errors(capsys):
     with pytest.raises(SystemExit) as e:
         main([])

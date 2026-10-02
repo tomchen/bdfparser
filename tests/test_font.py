@@ -787,6 +787,15 @@ class TestFontV3Querying:
     def test_drawcps_none_cp(self):
         assert self.font.drawcps([97, None]).width() == self.font.draw('a　').width()
 
+    def test_draw_nothing_is_empty_bitmap(self):
+        # regression: ValueError 'max() iterable argument is empty'
+        assert self.font.draw('').bindata == []
+        assert self.font.drawcps([]).bindata == []
+        assert self.font.draw('', direction='tbrl').bindata == []
+        assert self.font.drawall(r=(0x110000, 0x110001)).bindata == []
+        empty = Font.create(8)
+        assert empty.drawall().bindata == [] and empty.drawall().width() == 0
+
     def test_glyphbycp_beyond_unicode(self):
         font = Font().load_string(mini_bdf)
         with pytest.warns(BDFParserWarning):
