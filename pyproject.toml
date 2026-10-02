@@ -45,6 +45,7 @@ dev = [
     "fonttools>=4.60",
     "pillow>=11",
     "ruff>=0.13",
+    "freetype-py>=2.5.1",
 ]
 
 [tool.setuptools.dynamic]
@@ -59,6 +60,9 @@ bdfparser = ["py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+markers = [
+    "slow: long-running tests (full unifont, HanWang circle); run with BDFPARSER_SLOW=1",
+]
 
 [tool.coverage.run]
 source = ["bdfparser"]
